@@ -1,12 +1,15 @@
-<head>
-<title>UW WebP2P</title>
-<script type="text/javascript" src="jquery-1.7.1.js"></script>
-</head>
+<html>
+  <head>
+    <title>UW WebP2P</title>
+    <script type="text/javascript" src="jquery-1.7.1.js"></script>
+    <script type="text/javascript" src="webp2p.js" id="rtc"></script>
+  </head>
 
-<body>
-My Video<br>
-<video controls autoplay id="myview"> </video> <br>
-Remote Video <br>
-<video controls autoplay id="remoteview"> </video> <br>
-<script type="text/javascript" src="webp2p.js" id="rtc"></script>
-</body>
+  <body>
+    <span class='error' id='output'></span>
+    <p>My Video</p>
+    <video controls autoplay id="myview"></video>
+    <p>Remote Video</p>
+    <video controls autoplay id="remoteview"></video>
+  </body>
+</html>
