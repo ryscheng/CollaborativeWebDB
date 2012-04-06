@@ -1,8 +1,23 @@
 <html>
   <head>
-    <title>UW WebP2P</title>
-    <script type="text/javascript" src="jquery-1.7.1.js"></script>
-    <script type="text/javascript" src="webp2p.js" id="rtc"></script>
+    <title>WebP2P</title>
+    <script>
+        /*
+         * This weirdness allows us to handle loading both from
+         * the filesystem, and through the tornado parser.
+         */
+        var scripts = ['{{ static_url("jquery-1.7.1.js") }}',
+            '{{ static_url("webp2p.js") }}'];
+        for (var i = 0; i < scripts.length; i++) {
+          var script = document.createElement("script");
+          if (scripts[i].indexOf("{" + "{") != 0) {
+            script.src=scripts[i];
+          } else {
+            script.src=scripts[i].match(/\"(.*)\"/)[1];
+          }
+          document.head.appendChild(script);
+        }
+    </script>
   </head>
 
   <body>

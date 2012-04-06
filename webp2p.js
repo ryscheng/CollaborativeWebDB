@@ -1,4 +1,4 @@
-function localView() {
+function attachLocalStream() {
     navigator.getUserMedia_("video", successCallback, errorCallback);
     function successCallback(stream) {
       console.log(stream);
@@ -11,7 +11,7 @@ function localView() {
     }
 };
 
-$(document).ready(function() {
+window.addEventListener('load', function() {
   //Show alert on click
   $('video').click(function() {
     alert("Hello world!");
@@ -20,7 +20,14 @@ $(document).ready(function() {
   //Replace the source of the video element with the stream from the camera
   navigator.getUserMedia_ = navigator.getUserMedia || navigator.webkitGetUserMedia;
   if(!!navigator.getUserMedia_ !== false) {
-    localView();
+    var peerConnection = window.webkitDeprecatedPeerConnection;
+    if (!peerConnection) {
+      $('#output').html('Sorry, your browser doesn\'t support a functional peer connection. ')
+        .append('<p>Try Chrome canary or dev channel.</p>');
+      return;
+    }
+    
+    attachLocalStream();
   } else {
     console.log('Native web camera streaming (getUserMedia) is not supported in this browser.');
     $('#output').html('Sorry, your browser doesn\'t support getUserMedia. ')
@@ -32,4 +39,4 @@ $(document).ready(function() {
       .append('</p>')
     return;
   }
-});
+},false);
