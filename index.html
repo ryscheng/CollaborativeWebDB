@@ -6,6 +6,7 @@
          * This weirdness allows us to handle loading both from
          * the filesystem, and through the tornado parser.
          */
+        window.DEBUG = true;         
         var scripts = ['{{ static_url("jquery-1.7.1.js") }}',
             '{{ static_url("webp2p.js") }}'];
         for (var i = 0; i < scripts.length; i++) {
@@ -22,9 +23,5 @@
 
   <body>
     <span class='error' id='output'></span>
-    <p>My Video</p>
-    <video controls autoplay id="myview"></video>
-    <p>Remote Video</p>
-    <video controls autoplay id="remoteview"></video>
   </body>
 </html>
