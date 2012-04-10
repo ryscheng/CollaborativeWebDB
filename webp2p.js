@@ -28,30 +28,35 @@ var server = {
 };
 
 var node = {
-  seed:Math.random(),
-  edges:[],
+  edges:{},
   MAX_EDGES: 20,
   onServerMessage: function(msg) {
-    if (msg['payload'] && msg['payload']['event'])
+    if (msg['from'] === 0)
     {
-      var event = msg['payload']['event'];
-      if (event=='getid' && !this.id && msg['payload']['seed'] &&
-          msg['payload']['seed'] == this.seed) {
-        if (msg['id']) {
-          this.id = msg['id'];
-          server.write({event:'connected',id:this.id});
-        }
-      } else if (!this.id) {
-        return;
-      } else if (event == 'connected' && msg['payload']['id'] &&
-          msg['payload']['id'] != this.id) {
-        this.maybeConnect_(msg['payload']['id']);
+      if (msg['id'] && !this.id) {
+        // Registration complete.
+        this.id = msg['id'];
+        log.write("Registered with server as " + this.id);
+        // todo: consider announces on a timer or when deficient degree.
+        server.write({
+          event:'announce'
+        });
+      }
+    } else if (msg['from'] && msg['from'] != this.id) {
+      if (edges[msg['from']]) {
+        // Continue signalling a peer.
+      } else if (msg['event'] && msg['event'] == 'announce') {
+        // Initiate connection to a new peer.
+        this.maybeConnect_(msg['from']);
       }
     }
   },
   maybeConnect_:function(id) {
     if (this.edges.length < this.MAX_EDGES) {
-      // Open P2P Channel.
+      // todo: true channel setup integration.
+      server.write({
+        to: id
+      });
     }
   }
 };
@@ -86,8 +91,7 @@ window.addEventListener('load', function() {
     server.socket.onopen = function() {
       log.write("Connected to server.");
       server.write({
-        event:'getid',
-        seed:node.seed
+        event:'register'
       });
     }
     server.subscribers.push(function(msg) {
