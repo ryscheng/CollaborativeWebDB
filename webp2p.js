@@ -27,6 +27,35 @@ var server = {
   }
 };
 
+var node = {
+  seed:Math.random(),
+  edges:[],
+  MAX_EDGES: 20,
+  onServerMessage: function(msg) {
+    if (msg['payload'] && msg['payload']['event'])
+    {
+      var event = msg['payload']['event'];
+      if (event=='getid' && !this.id && msg['payload']['seed'] &&
+          msg['payload']['seed'] == this.seed) {
+        if (msg['id']) {
+          this.id = msg['id'];
+          server.write({event:'connected',id:this.id});
+        }
+      } else if (!this.id) {
+        return;
+      } else if (event == 'connected' && msg['payload']['id'] &&
+          msg['payload']['id'] != this.id) {
+        this.maybeConnect_(msg['payload']['id']);
+      }
+    }
+  },
+  maybeConnect_:function(id) {
+    if (this.edges.length < this.MAX_EDGES) {
+      // Open P2P Channel.
+    }
+  }
+};
+
 var log = {
   start: function(vis) {
     this.el = document.createElement("pre");
@@ -56,10 +85,15 @@ window.addEventListener('load', function() {
     server.start();
     server.socket.onopen = function() {
       log.write("Connected to server.");
+      server.write({
+        event:'getid',
+        seed:node.seed
+      });
     }
     server.subscribers.push(function(msg) {
       log.write("Server Message received: " + JSON.stringify(msg));
     });
+    server.subscribers.push(node.onServerMessage.bind(node));
   } else {
     console.log('Native web camera streaming (getUserMedia) is not supported in this browser.');
     $('#output').html('Sorry, your browser doesn\'t support getUserMedia. ')
