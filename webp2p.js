@@ -7,7 +7,7 @@ var server = {
     if (!this.socket) {
       return false;
     }
-    return this.socket.send(JSON.stringify({"payload":obj}));
+    return this.socket.send(JSON.stringify({"payload": obj}));
   },
   
   start: function() {
@@ -43,7 +43,8 @@ var node = {
         });
       }
     } else if (msg['from'] && msg['from'] != this.id) {
-      if (edges[msg['from']]) {
+      if (this.edges[msg['from']]) {
+        this.edges[msg['from']].processSignalingMessage(msg['msg']);
         // Continue signalling a peer.
       } else if (msg['event'] && msg['event'] == 'announce') {
         // Initiate connection to a new peer.
@@ -52,12 +53,26 @@ var node = {
     }
   },
   maybeConnect_:function(id) {
-    if (this.edges.length < this.MAX_EDGES) {
+    var edge_num = 0;
+    for (var i in this.edges) {
+      if(this.edges.hasOwnProperty(i)) {
+        edge_num++;
+      }
+    }
+    if (edge_num < this.MAX_EDGES) {
       // todo: true channel setup integration.
+      var pc = new webkitDeprecatedPeerConnection("STUN stun.l.google.com:19302", this.send_.bind(this, id));
+      this.edges[id] = pc;
       server.write({
         to: id
       });
     }
+  },
+  send_:function(id, msg) {
+    server.write({
+      to:id,
+      msg:msg
+    })
   }
 };
 
@@ -109,4 +124,4 @@ window.addEventListener('load', function() {
       .append('</p>')
     return;
   }
-},false);
+}, false);
