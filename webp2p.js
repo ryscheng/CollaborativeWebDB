@@ -49,23 +49,33 @@ var node = {
       } else if (msg['event'] && msg['event'] == 'announce') {
         // Initiate connection to a new peer.
         this.maybeConnect_(msg['from']);
+      } else if (msg['event'] && msg['event'] == 'decline') {
+        if (this.edges[msg['from']]) {
+          this.edges[msg['from']].close();
+          delete this.edges[msg['from']];
+        }
+      } else if (msg['msg'] && !this.full()) {
+        this.maybeConnect_(msg['from']);
+        this.edges[msg['from']].processSignalingMessage(msg['msg']);
+      } else {
+        server.write({to:msg['from'], event:'decline'});
       }
     }
   },
-  maybeConnect_:function(id) {
+  full: function() {
     var edge_num = 0;
     for (var i in this.edges) {
       if(this.edges.hasOwnProperty(i)) {
         edge_num++;
       }
     }
-    if (edge_num < this.MAX_EDGES) {
+    return (edge_num >= this.MAX_EDGES);
+  },
+  maybeConnect_:function(id) {
+    if (!this.full()) {
       // todo: true channel setup integration.
       var pc = new webkitDeprecatedPeerConnection("STUN stun.l.google.com:19302", this.send_.bind(this, id));
       this.edges[id] = pc;
-      server.write({
-        to: id
-      });
     }
   },
   send_:function(id, msg) {
