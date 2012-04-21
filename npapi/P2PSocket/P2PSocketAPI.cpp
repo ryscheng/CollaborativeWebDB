@@ -69,7 +69,18 @@ void P2PSocketAPI::testEvent()
 /// Socket interface.
 std::string P2PSocketAPI::bind(int port)
 {
-  return "bind not implemented";
+    int ret;
+
+    if (event_thread != NULL) {
+        return "Socket already activated";
+    }
+    ret = pthread_create( &event_thread, NULL, &P2PSocketAPI::run, NULL);
+    if (ret != 0) {
+        return "Failed to create thread";
+    }
+    
+
+    return "bind not implemented";
 }
 
 std::string P2PSocketAPI::connect(const FB::variant& destination)
@@ -80,4 +91,9 @@ std::string P2PSocketAPI::connect(const FB::variant& destination)
 std::string P2PSocketAPI::send(const std::string& message)
 {
   return "send not implemented";
+}
+
+void* P2PSocketAPI::run(void* args)
+{
+
 }

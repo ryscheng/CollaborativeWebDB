@@ -10,6 +10,8 @@
 #include "JSAPIAuto.h"
 #include "BrowserHost.h"
 #include "P2PSocket.h"
+#include <pthread.h>
+#include <sys/socket.h>
 
 #ifndef H_P2PSocketAPI
 #define H_P2PSocketAPI
@@ -50,6 +52,12 @@ public:
         registerMethod("bind", make_method(this, &P2PSocketAPI::bind)); 
         registerMethod("connect", make_method(this, &P2PSocketAPI::connect)); 
         registerMethod("send", make_method(this, &P2PSocketAPI::send));
+        
+        /* setup passive open */
+        if ((sock = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+            perror("socket");
+            exit(1);
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -59,7 +67,9 @@ public:
     ///         the browser is done with it; this will almost definitely be after
     ///         the plugin is released.
     ///////////////////////////////////////////////////////////////////////////////
-    virtual ~P2PSocketAPI() {};
+    virtual ~P2PSocketAPI() {
+        close(sock);
+    };
 
     P2PSocketPtr getPlugin();
 
@@ -88,6 +98,10 @@ public:
     FB_JSAPI_EVENT(message, 2, (const std::string&, const std::string&));
 
 private:
+    static void* run(void* args);
+
+    int sock;
+    pthread_t event_thread = NULL;
     P2PSocketWeakPtr m_plugin;
     FB::BrowserHostPtr m_host;
 
