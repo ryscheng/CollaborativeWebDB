@@ -10,6 +10,7 @@
 #include "JSAPIAuto.h"
 #include "BrowserHost.h"
 #include "P2PSocket.h"
+#include <fcntl.h>
 #include <pthread.h>
 #include <sys/socket.h>
 
@@ -33,6 +34,8 @@ public:
     P2PSocketAPI(const P2PSocketPtr& plugin, const FB::BrowserHostPtr& host) :
         m_plugin(plugin), m_host(host)
     {
+        event_thread = NULL;
+
         // Auto-generated
         registerMethod("echo",      make_method(this, &P2PSocketAPI::echo));
         registerMethod("testEvent", make_method(this, &P2PSocketAPI::testEvent));
@@ -49,15 +52,12 @@ public:
                                        &P2PSocketAPI::get_version));
        
         /// Socket interface
-        registerMethod("bind", make_method(this, &P2PSocketAPI::bind)); 
-        registerMethod("connect", make_method(this, &P2PSocketAPI::connect)); 
+        registerMethod("bind", make_method(this, &P2PSocketAPI::start_server)); 
+        registerMethod("connect", make_method(this, &P2PSocketAPI::start_client)); 
         registerMethod("send", make_method(this, &P2PSocketAPI::send));
-        
-        /* setup passive open */
-        if ((sock = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-            perror("socket");
-            exit(1);
-        }
+
+        // initial state
+        thread_signal_fd = -1;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -68,7 +68,9 @@ public:
     ///         the plugin is released.
     ///////////////////////////////////////////////////////////////////////////////
     virtual ~P2PSocketAPI() {
-        close(sock);
+        if (thread_signal_fd > -1) {
+            close(thread_signal_fd);
+        }
     };
 
     P2PSocketPtr getPlugin();
@@ -92,16 +94,17 @@ public:
     void testEvent();
 
     /// Socket interface
-    std::string bind(int port);
-    std::string connect(const FB::variant& destination);
+    std::string start_server(int port);
+    std::string start_client(const FB::variant& destination);
     std::string send(const std::string& message);
-    FB_JSAPI_EVENT(message, 2, (const std::string&, const std::string&));
+    FB_JSAPI_EVENT(message, 1, (const FB::variant&));
 
 private:
     static void* run(void* args);
+    std::string start_event_thread(int, int);
 
-    int sock;
-    pthread_t event_thread = NULL;
+    int thread_signal_fd;
+    pthread_t event_thread;
     P2PSocketWeakPtr m_plugin;
     FB::BrowserHostPtr m_host;
 
