@@ -8,6 +8,8 @@
          */
         window.DEBUG = true;         
         var scripts = ['{{ static_url("jquery-1.7.1.js") }}',
+            '{{ static_url("log.js") }}',
+            '{{ static_url("peer.js") }}',
             '{{ static_url("webp2p.js") }}'];
         for (var i = 0; i < scripts.length; i++) {
           var script = document.createElement("script");
