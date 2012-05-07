@@ -5,6 +5,7 @@ window.addEventListener('load', function() {
   // Initialize UI.
   log.write("Initializing User Interface.");
   network_pane.init();
+  sql_pane.init();
 
   // Initialize the Server Connection.
   log.write("Connecting to server.");
