@@ -8,7 +8,7 @@ sql_pane.init = function() {
     sql_pane.panes.push(new sql_pane($("#querybox").val()));
     return false;
   });
-}
+};
 
 sql_pane.counter = 1;
 sql_pane.prototype.newInstance = function(query) {
