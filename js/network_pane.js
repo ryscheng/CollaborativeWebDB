@@ -36,7 +36,7 @@ var network_pane = {
         var that = this;
         this.force.nodes(this.nodes).links(this.links).start();
         var link = this.canvas.selectAll("line").data(this.links)
-            .enter().append("line")
+            .enter().insert("line", "g")
             .style("stroke", "#999")
             .style("stroke-opacity", .6)
             .style("stroke-width", 1.5);
@@ -78,7 +78,7 @@ var network_pane = {
       }
       return -1;
     },
-    maybe_add_node: function(id) {
+    saw_node: function(id) {
       if (this.get_node_idx(id) > -1) {
         return;
       }

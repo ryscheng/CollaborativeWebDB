@@ -72,11 +72,11 @@ var node = {
     return (edge_num >= this.MAX_EDGES);
   },
   maybeConnect_:function(id) {
+    network_pane.saw_node(id);
     if (!this.full()) {
       // todo: true channel setup integration.
       var pc = new webkitDeprecatedPeerConnection("STUN stun.l.google.com:19302", this.send_.bind(this, id));
       this.edges[id] = pc;
-      network_pane.maybe_add_node(id);
     }
   },
   send_:function(id, msg) {
