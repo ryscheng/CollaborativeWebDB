@@ -15,7 +15,7 @@ Running
 -------
 
     git submodule init
-    get submodule update
+    git submodule update
     cd server
     python webp2p.py
 
