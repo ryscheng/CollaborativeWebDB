@@ -1,29 +1,78 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
+    <meta charset="utf-8">
     <title>WebP2P</title>
-    <script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <script type="text/javascript">
         /*
          * This weirdness allows us to handle loading both from
          * the filesystem, and through the tornado parser.
          */
-        window.DEBUG = true;         
-        var scripts = ['{{ static_url("jquery-1.7.1.js") }}',
-            '{{ static_url("log.js") }}',
-            '{{ static_url("peer.js") }}',
-            '{{ static_url("webp2p.js") }}'];
+        window.DEBUG = true;
+        function getUrl(str) {
+          if (str.indexOf("{" + "{") != 0) return str;
+          return str.match(/\"(.*)\"/)[1];
+        }
+        var styles = ['{{ static_url("css/bootstrap.css") }}',
+            '{{ static_url("css/webp2p.css") }}'];
+        for (var i = 0; i < styles.length; i++) {
+          var url = getUrl(styles[i]);
+          document.write("<link href='" + url + "' rel='stylesheet'>");
+        }        
+        var scripts = ['{{ static_url("js/jquery.js") }}',
+            '{{ static_url("js/bootstrap.js") }}',
+            '{{ static_url("js/d3.js") }}',
+            '{{ static_url("js/network_pane.js") }}',
+            '{{ static_url("js/log.js") }}',
+            '{{ static_url("js/peer.js") }}',
+            '{{ static_url("js/webp2p.js") }}'];
         for (var i = 0; i < scripts.length; i++) {
-          var script = document.createElement("script");
-          if (scripts[i].indexOf("{" + "{") != 0) {
-            script.src=scripts[i];
-          } else {
-            script.src=scripts[i].match(/\"(.*)\"/)[1];
-          }
-          document.head.appendChild(script);
+          var url = getUrl(scripts[i]);
+          document.write('<script type="text/javascript" src="' + url + '">');
+          document.write('<' + '/script>');
         }
     </script>
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
   </head>
-
   <body>
-    <span class='error' id='output'></span>
+  <div class="container">
+    <header class="jumbotron subhead">
+      <h1>FORWARD to the Future!</h1>
+    </header>
+    <section id="query">
+    <div class="row">
+    <div class="span8 offset2">
+        <form class="form-search">
+            <textarea class="query" id="querybox"></textarea>
+            <button class="btn-primary btn pull-right" id="executor">
+            <i class="icon-play"></i> Execute
+            </button>
+        </form>
+    </div>
+    </div>
+    </section>
+    <section id="results" class="tabbable">
+        <ul class="nav nav-tabs">
+            <li class="active">
+                <a href="#tab1" data-toggle="tab">Compose</a>
+            </li>
+            <li>
+                <a href="#network" data-toggle="tab">Network</a>
+            </li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane active" id="tab1">
+                Describe Loading
+            </div>
+            <div class="tab-pane span11" id="network">
+                Network Loading
+            </div>
+        </div>
+    </section>
+  </div>
   </body>
 </html>

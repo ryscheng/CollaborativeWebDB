@@ -1,0 +1,12 @@
+.jumbotron {
+    margin: 5pt;
+}
+
+.query {
+    width: 100%;
+    height: 6em;
+}
+
+#network {
+    height: 350px;
+}
