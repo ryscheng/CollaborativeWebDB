@@ -12,6 +12,7 @@ if tornado_folder not in sys.path:
 
 import base64
 import logging
+import sqlite3
 import tornado.escape
 import tornado.ioloop
 import tornado.options
@@ -30,6 +31,7 @@ class Application(tornado.web.Application):
         handlers = [
             (r"/", MainHandler),
             (r"/message", MessageHandler),
+            (r"/data", DataHandler)
         ]
         settings = dict(
             cookie_secret=base64.b64encode(uuid.uuid4().bytes + uuid.uuid4().bytes),
@@ -44,6 +46,35 @@ class Application(tornado.web.Application):
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.render("index.html")
+
+class DataHandler(tornado.web.RequestHandler):
+    def initialize(self):
+        if os.path.exists('data.sqlite3'):
+            self.db = sqlite3.connect('data.sqlite3')
+        else:
+            self.db = None
+
+    def get(self):
+        # todo: validate table against known table names
+        # todo: support additional 'where' queries
+        table = self.get_argument('t');
+        offset = self.get_argument('o');
+        try:
+            offset = int(offset)
+        except ValueError:
+            offset = 0
+        retval = {}
+        if self.db:
+            c = self.db.cursor()
+            try:
+                retval['rows'] = [row for row in c.execute('SELECT * FROM %s LIMIT %d, 30' % (table, offset))]
+            except Exception as e:
+                retval['status'] = e.__str__()
+        else:
+            retval['status'] = 'No Data Available'
+
+        self.write(retval)
+                
 
 class MessageHandler(tornado.websocket.WebSocketHandler):
     waiters = dict()
