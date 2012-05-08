@@ -35,7 +35,7 @@ sql_pane.prototype.newInstance = function(query) {
 sql_pane.prototype.createResultUI = function() {
   var title = document.createElement("a");
   $(title).attr('href','#result_' + this.id).attr('data-toggle','tab')
-      .html("Result");
+      .html("Result ");
   var tab = document.createElement("li");
   $(tab).append(title);
   $("#results>ul").append(tab);
@@ -45,7 +45,17 @@ sql_pane.prototype.createResultUI = function() {
       .html(sql_pane.progressBar_("offset4 span4", 25));
   $("#results>.tab-content").append(this.element);
 
-  $(title).tab('show');
+  var that = this;
+  var closer = document.createElement("i");
+  $(closer).addClass('icon-remove-sign tab-close').click(function() {
+    if ($(tab).hasClass('active')) {
+      $("#results a:first").tab('show');
+    }
+    $(tab).detach();
+    $(that.element).detach();
+  });
+
+  $(title).append(closer).tab('show');
 };
 
 sql_pane.prototype.updateTable_ = function() {

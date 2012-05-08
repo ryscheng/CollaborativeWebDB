@@ -10,3 +10,10 @@
 #network {
     height: 350px;
 }
+
+.tab-close {
+    opacity: 0.2;
+}
+.tab-close:hover {
+    opacity: 0.4;
+}
