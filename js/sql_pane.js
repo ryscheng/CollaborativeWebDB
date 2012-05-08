@@ -5,6 +5,9 @@ sql_pane.panes = [];
 sql_pane.init = function() {
   $("#queryform").submit(function(e) {
     e.preventDefault();
+    return false;
+  });
+  $("#executor").click(function(e) {
     sql_pane.panes.push(new sql_pane($("#querybox").val()));
     return false;
   });

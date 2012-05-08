@@ -25,8 +25,11 @@
             '{{ static_url("js/bootstrap.js") }}',
             '{{ static_url("js/d3.js") }}',
             '{{ static_url("js/network_pane.js") }}',
+            '{{ static_url("js/jsinq.js") }}',
+            '{{ static_url("js/jsinq-query.js") }}',
             '{{ static_url("js/sql.js") }}',
             '{{ static_url("js/sql_pane.js") }}',
+            '{{ static_url("js/describe_pane.js") }}',
             '{{ static_url("js/log.js") }}',
             '{{ static_url("js/peer.js") }}',
             '{{ static_url("js/webp2p.js") }}'];
@@ -52,6 +55,9 @@
             <textarea class="query" id="querybox"></textarea>
             <button class="btn-primary btn pull-right" id="executor">
             <i class="icon-play"></i> Execute
+            </button>
+            <button class="btn pull-right" id="describer">
+            <i class="icon-info-sign"></i> Explain
             </button>
         </form>
     </div>
