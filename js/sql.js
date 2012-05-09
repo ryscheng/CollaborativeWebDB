@@ -8,5 +8,11 @@ var database = {
   get_schema: function(query, callback) {
     //TODO: return the columns of the query.
     callback(["name", "awesomeness"]);
+  },
+  load_from_server: function(table, range, callback) {
+    $.ajax({
+      url: "/data",
+      data: { t: table, o: range }
+    }).done(callback);
   }
 };

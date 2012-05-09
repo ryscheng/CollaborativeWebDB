@@ -17,3 +17,9 @@
 .tab-close:hover {
     opacity: 0.4;
 }
+
+.three-column {
+    -moz-column-count: 3; /* Firefox */
+    -webkit-column-count: 3; /* Safari and Chrome */
+    column-count: 3;
+}
