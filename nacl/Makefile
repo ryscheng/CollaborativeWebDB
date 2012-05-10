@@ -69,7 +69,7 @@ $(PROJECT)_x86_64.nexe : $(x86_64_OBJS)
 # Define a phony rule so it always runs, to build nexe and start up server.
 .PHONY: RUN 
 RUN: all
-	python ../httpd.py
+	python httpd.py
 
 clean:
 	rm *.o
