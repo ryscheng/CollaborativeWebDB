@@ -89,6 +89,8 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
     def on_close(self):
         if self.id:
           del MessageHandler.waiters[self.id]
+          MessageHandler.send_updates({"from": 0, "id": self.id, "event": "disconnect"});
+
 
     @classmethod
     def send_updates(cls, chat):
@@ -108,9 +110,9 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
             if self.id == 0:
               self.id = str(uuid.uuid4())
               MessageHandler.waiters[self.id] = self
-              self.write_message({"id":self.id, "from":0})
+              self.write_message({"id":self.id, "from":0, "event": "register"})
             else:
-              self.write_message({"id":self.id, "from":0})
+              self.write_message({"id":self.id, "from":0, "event": "register"})
           elif "event" in parsed["payload"] and parsed["payload"]["event"] == "announce":
             # handle announces.
             # todo: rate limiting.

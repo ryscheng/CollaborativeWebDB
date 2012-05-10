@@ -33,7 +33,7 @@ var node = {
   onServerMessage: function(msg) {
     if (msg['from'] === 0)
     {
-      if (msg['id'] && !this.id) {
+      if (msg['id'] && !this.id && msg['event'] == "register") {
         // Registration complete.
         this.id = msg['id'];
         log.write("Registered with server as " + this.id);
@@ -41,6 +41,9 @@ var node = {
         server.write({
           event:'announce'
         });
+      } else if (msg['event'] == 'disconnect') {
+        delete this.edges[msg['id']];
+        network_pane.drop_node(msg['id']);
       }
     } else if (msg['from'] && msg['from'] != this.id) {
       if (this.edges[msg['from']]) {
