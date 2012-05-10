@@ -4,6 +4,7 @@ window.addEventListener('load', function() {
   
   // Initialize UI.
   log.write("Initializing User Interface.");
+  compose_pane.init();
   network_pane.init();
   sql_pane.init();
   describe_pane.init();

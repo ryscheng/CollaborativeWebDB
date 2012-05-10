@@ -464,9 +464,14 @@
 				// Translate placeholders in the query expression into 
 				// subscripting into the query parameters array.
 				// Todo: This is probably not the best place for this.
-				var regExp = new RegExp('^\\$[0-9]+$', 'g');
+				var regExp = new RegExp('^\\$.+$', 'g');
 				if (regExp.test(identifier)) {
-					identifier = '_$qp[' + identifier.substring(1) + ']';
+				    identifier = identifier.substring(1);
+				    if (isNaN(parseFloat(identifier)) ||
+				        !isFinite(identifier)) {
+				        identifier = '"' + identifier + '"';
+				    }
+					identifier = '_$qp[' + identifier + ']';
 				}
 				
 				return {

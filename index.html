@@ -28,6 +28,7 @@
             '{{ static_url("js/jsinq.js") }}',
             '{{ static_url("js/jsinq-query.js") }}',
             '{{ static_url("js/sql.js") }}',
+            '{{ static_url("js/compose_pane.js") }}',
             '{{ static_url("js/sql_pane.js") }}',
             '{{ static_url("js/describe_pane.js") }}',
             '{{ static_url("js/log.js") }}',
@@ -66,15 +67,17 @@
     <section id="results" class="tabbable">
         <ul class="nav nav-tabs">
             <li class="active">
-                <a href="#tab1" data-toggle="tab">Compose</a>
+                <a href="#compose" data-toggle="tab">Compose</a>
             </li>
             <li>
                 <a href="#network" data-toggle="tab">Network</a>
             </li>
         </ul>
         <div class="tab-content">
-            <div class="tab-pane active" id="tab1">
-                Describe Loading
+            <div class="tab-pane active" id="compose">
+                <div class="offset4 span4 progress progress-striped active">
+                    <div class="bar" style="width:100%;"></div>
+                </div>
             </div>
             <div class="tab-pane span11" id="network">
                 Network Loading
