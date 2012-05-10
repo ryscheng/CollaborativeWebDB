@@ -48,6 +48,8 @@ class MainHandler(tornado.web.RequestHandler):
         self.render("index.html")
 
 class DataHandler(tornado.web.RequestHandler):
+    pagesize = 30
+
     def initialize(self):
         if os.path.exists('data.sqlite3'):
             self.db = sqlite3.connect('data.sqlite3')
@@ -67,7 +69,9 @@ class DataHandler(tornado.web.RequestHandler):
         if self.db:
             c = self.db.cursor()
             try:
-                retval['rows'] = [row for row in c.execute('SELECT * FROM %s LIMIT %d, 30' % (table, offset))]
+                retval['range'] = [offset, offset + self.pagesize]
+                retval['total'] = c.execute('SELECT COUNT(*) FROM %s' % table).fetchone()[0]
+                retval['rows'] = [row for row in c.execute('SELECT * FROM %s LIMIT %d, %d' % (table, offset, self.pagesize))]
             except Exception as e:
                 retval['status'] = e.__str__()
         else:
