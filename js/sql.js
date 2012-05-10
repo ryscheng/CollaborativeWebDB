@@ -13,12 +13,27 @@ var database = {
     }
     //TODO: execute the query, and run callback with the resulting tuples.
     window.setTimeout(function() {
-      callback([["john smith",24], ["adam lerner",115]]);
-    }, 1000);
+      try {
+        var q = new jsinq.Query(query);
+        callback(q.execute(database.source));
+      } catch(e) {
+        callback(null, e);
+      }
+    }, 0);
   },
   get_schema: function(query, callback) {
-    //TODO: return the columns of the query.
-    callback(["name", "awesomeness"]);
+    database.execute(query, function(enumerable, error) {
+      if(enumerable && enumerable.moveNext()) {
+        var row = enumerable.current();
+        var idxs = [];
+        for (var i in row) {
+          idxs.push(i);
+        }
+        callback(idxs);
+      } else {
+        callback([], error);
+      }
+    });
   },
   
   unblock: function() {
