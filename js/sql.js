@@ -29,7 +29,6 @@ var database = {
         callback(q.getQueryFunction()(database.source));
       } catch(e) {
         log.warn("error generating enumerator");
-        console.log(q.getQueryFunction());
         callback(null, e);
       }
     }, 0);
@@ -67,8 +66,17 @@ var database = {
   },
 
   load_page: function(key, callback) {
-    // TODO: costing decision.
-    database.load_from_server(key, callback);
+    if (database.source[key.table] && database.source[key.table][key.hash]) {
+        return callback();
+    }
+
+    server.lookup(key.hash, function(peers) {
+        if (!peers.length) {
+            database.load_from_server(key, callback);
+        } else {
+            console.log('would get from peers');
+        }
+    });
   },
 
   load_from_server: function(key, callback) {

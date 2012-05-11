@@ -2,6 +2,8 @@
 var server = {
   socket: null,
   subscribers: [],
+  waiters: {},
+  providers: {},
 
   write: function(obj) {
     if (!this.socket) {
@@ -24,6 +26,28 @@ var server = {
       }
 	}
 	return true;
+  },
+  
+  lookup: function(key, result) {
+    log.write("Looking up " + key);
+    if(server.write({"event":"get","key":key})) {
+      if (server.waiters[key + ".cache"]) {
+        return result(server.waiters[key + ".cache"]);
+      }
+      if (server.waiters[key]) {
+        server.waiters[key].push(result);
+      } else {
+        server.waiters[key] = [result];
+      }
+    } else {
+      result([]);
+    }
+  },
+  provide: function(key, getter) {
+    log.write("Providing " + key);
+    if(server.write({"event":"set","key":key})) {
+      server.providers[key] = getter;
+    }
   }
 };
 
@@ -44,6 +68,15 @@ var node = {
       } else if (msg['event'] == 'disconnect') {
         delete this.edges[msg['id']];
         network_pane.drop_node(msg['id']);
+      } else if (msg['event'] == 'list') {
+        var key = msg['key'];
+        var result = msg['ids'];
+        server.waiters[key + ".cache"] = result;
+        var callback = server.waiters[key];
+        delete server.waiters[key];
+        for (var i = 0; i < callback.length; i++) {
+          callback[i](result);
+        }
       }
     } else if (msg['from'] && msg['from'] != this.id) {
       if (this.edges[msg['from']]) {

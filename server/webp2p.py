@@ -82,6 +82,7 @@ class DataHandler(tornado.web.RequestHandler):
 
 class MessageHandler(tornado.websocket.WebSocketHandler):
     waiters = dict()
+    hashes = dict()
 
     def allow_draft76(self):
         # for iOS 5.0 Safari
@@ -89,11 +90,14 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
       self.id = 0
+      self.hashes = []
 
     def on_close(self):
         if self.id:
           del MessageHandler.waiters[self.id]
           MessageHandler.send_updates({"from": 0, "id": self.id, "event": "disconnect"});
+          for key in self.hashes:
+            MessageHandler.hashes[key].remove(self.id)
 
 
     @classmethod
@@ -123,6 +127,21 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
             if self.id != 0:
               parsed["payload"]["from"] = self.id
               MessageHandler.send_updates(parsed["payload"])
+          elif "event" in parsed["payload"] and parsed["payload"]["event"] == "get":
+            if self.id != 0 and "key" in parsed["payload"]:
+              key = parsed["payload"]["key"]
+              if key in MessageHandler.hashes:
+                self.write_message({"from":0, "event":"list", "key":key, "ids":MessageHandler.hashes[key]})
+              else:
+                self.write_message({"from":0, "event":"list", "key":key, "ids":[]})
+          elif "event" in parsed["payload"] and parsed["payload"]["event"] == "set":
+            if self.id != 0 and "key" in parsed["payload"]:
+              key = parsed["payload"]["key"]
+              self.hashes.push(key)
+              if key in MessageHandler.hashes:
+                MessageHandler.hashes[key].append(self.id)
+              else:
+                MessageHandler.hashes[key] = [self.id]
           else:
             # direct message.
             recip_id = parsed["payload"]["to"]
