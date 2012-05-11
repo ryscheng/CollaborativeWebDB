@@ -109,16 +109,15 @@ sql_pane.prototype.renderHead = function(data, error) {
 sql_pane.prototype.renderData = function(data, error) {
   this.tbody = document.createElement('tbody');
   if (data) {
-    while(data.moveNext()) {
-      var line = data.current();
+    data.each(function(line) {
       var row = document.createElement('tr');
       for (var i in line) {
         var cell = document.createElement('td');
         cell.innerHTML = line[i];
         row.appendChild(cell);
       }
-      this.tbody.appendChild(row);
-    }
+      this.tbody.appendChild(row);        
+    }.bind(this));
   } else {
     var row = document.createElement('tr');
     var cell = document.createElement('td');

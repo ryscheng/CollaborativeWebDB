@@ -6,8 +6,8 @@ var compose_pane = {
   render_sqlite: function() {
     $('#compose').empty();
 
-    if (database.source.length) {
-      for (var i = 0; i < database.source.length; i++) {
+    if (database.source) {
+      for (var i in database.source) {
         var block = document.createElement("div");
         $('#compose').addClass('three-column span10 offset1').append($(block)
            .append(compose_pane.render_table(database.source[i])));
@@ -22,9 +22,9 @@ var compose_pane = {
   },
   render_table: function(table) {
     var body = document.createElement('tbody');
-    for (var i in table['cols']) {
+    for (var i in table.cols) {
       var row = document.createElement('tr');
-      $(row).html('<td>'+i+'</td><td>'+table['cols'][i]+'</td>');
+      $(row).html('<td>'+i+'</td><td>'+table.cols[i]+'</td>');
       body.appendChild(row);
     }
     var tbl = document.createElement('table');

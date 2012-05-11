@@ -19,5 +19,8 @@ var log = {
   },
   write: function(msg) {
     $(this.el).append(msg + "\n\r");
+  },
+  warn: function(msg) {
+    $(this.el).append("<span style='color:red'>" + msg + "</span>\n\r");
   }
 };
