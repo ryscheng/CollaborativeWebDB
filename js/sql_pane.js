@@ -90,25 +90,40 @@ sql_pane.prototype.updateTable_ = function() {
   }
 };
 
-sql_pane.prototype.renderHead = function(data) {
+sql_pane.prototype.renderHead = function(data, error) {
   this.thead = document.createElement('tr');
-  for (var i = 0; i < data.length; i++) {
+  if (data && data.length) {
+    for (var i = 0; i < data.length; i++) {
+      var cell = document.createElement('th');
+      cell.innerHTML = data[i];
+      this.thead.appendChild(cell);
+    }
+  } else {
     var cell = document.createElement('th');
-    cell.innerHTML = data[i];
+    cell.innerHTML = error ? "Error" : "Unknown";
     this.thead.appendChild(cell);
   }
   this.updateTable_();
 };
 
-sql_pane.prototype.renderData = function(data) {
+sql_pane.prototype.renderData = function(data, error) {
   this.tbody = document.createElement('tbody');
-  for (var i = 0; i < data.length; i++) {
-    var row = document.createElement('tr');
-    for (var j = 0; j < data[i].length; j++) {
-      var cell = document.createElement('td');
-      cell.innerHTML = data[i][j];
-      row.appendChild(cell);
+  if (data) {
+    while(data.moveNext()) {
+      var line = data.current();
+      var row = document.createElement('tr');
+      for (var i in line) {
+        var cell = document.createElement('td');
+        cell.innerHTML = line[i];
+        row.appendChild(cell);
+      }
+      this.tbody.appendChild(row);
     }
+  } else {
+    var row = document.createElement('tr');
+    var cell = document.createElement('td');
+    cell.innerHTML = error || "No data returned.";
+    row.appendChild(cell);
     this.tbody.appendChild(row);
   }
   this.updateTable_();

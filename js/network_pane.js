@@ -86,6 +86,32 @@ var network_pane = {
       this.links.push({"source":this.nodes.length - 1, "target":1});
       this.restore();
     },
+    drop_node: function(id) {
+      var idx = this.get_node_idx(id);
+      if (idx == -1) {
+        return;
+      }
+      this.canvas.selectAll("g").data([this.nodes[idx]]).exit().remove();
+      this.nodes.splice(idx,1);
+      var link_idx = [];
+      for (var i = 0; i < this.links.length; i ++) {
+        var src = this.links[i]['source'];
+        var trgt = this.links[i]['target'];
+        
+        if ((src['name'] && src['name'] == id) ||
+            (trgt['name'] && trgt['name'] == id) ||
+            src == idx ||
+            trgt == idx) {
+          link_idx.push(i);
+        }
+      }
+      link_idx.reverse();
+      for (var i = 0; i < link_idx.length; i++) {
+        this.canvas.selectAll("line").data([this.links[link_idx[i]]]).exit().remove();
+        this.links.splice(link_idx[i], 1);
+      }
+      this.restore();
+    },
 
     network_size: function() {
       return [ $('#network').width(), $('#network').height() - 10 ];
