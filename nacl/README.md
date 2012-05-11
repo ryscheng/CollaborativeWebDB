@@ -10,9 +10,10 @@ Compile
 -------
 In order to get it running, do the following:
   export NACL_SDK_ROOT=<path-to-nacl_sdk/pepper-19/>
+  cd src/
   make
 
 Run
 ---
 In order to run, start the server, then navigate to http://localhost:5103
-  python httpd.py
+  python scripts/httpd.py

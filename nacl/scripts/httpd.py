@@ -24,6 +24,7 @@ logging.getLogger().setLevel(logging.INFO)
 # via the loop back interface.
 SERVER_PORT = 5103
 SERVER_HOST = ''
+SERVE_PATH = os.getcwd()
 
 # We only run from the examples directory so that not too much is exposed
 # via this HTTP server.  Everything in the directory is served, so there should
@@ -32,7 +33,7 @@ SERVER_HOST = ''
 # We only serve via the loopback interface.
 def SanityCheckDirectory():
   httpd_path = os.path.abspath(os.path.dirname(__file__))
-  serve_path = os.path.abspath(os.getcwd())
+  serve_path = os.path.abspath(SERVE_PATH)
 
   # Verify we are serving from the directory this script came from, or bellow
   if serve_path[:len(httpd_path)] == httpd_path:
