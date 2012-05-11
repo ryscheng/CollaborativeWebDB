@@ -16,7 +16,7 @@
 #
 PROJECT:=nacl_transport
 LDFLAGS:=-lppapi_cpp -lppapi
-CXX_SOURCES:=$(PROJECT).cc
+CXX_SOURCES:=tcp_socket.cc $(PROJECT).cc
 
 
 #
@@ -30,7 +30,7 @@ NACL_SDK_ROOT?=$(abspath $(dir $(THIS_MAKEFILE))../..)
 
 # Project Build flags
 WARNINGS:=-Wno-long-long -Wall -Wswitch-enum -pedantic -Werror
-CXXFLAGS:=-pthread -std=gnu++98 $(WARNINGS)
+CXXFLAGS:=-pthread -std=gnu++98 $(WARNINGS) -Iinclude
 
 #
 # Compute tool paths
