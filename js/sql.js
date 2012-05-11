@@ -1,5 +1,6 @@
 var database = {
   source: null,
+  training: false,
   blocked: [],
   
   execute: function(query, callback) {
@@ -34,10 +35,12 @@ var database = {
     }, 0);
   },
   get_schema: function(query, callback) {
+    database.training = true;
     database.execute(query, function(enumerable, error) {
     if (error)
       console.log(error.stack);
       if (!enumerable) {
+        database.reset();
         return callback([], error);
       }
       enumerable.first(function(item) {
@@ -45,6 +48,7 @@ var database = {
         for (var i in item) {
           idxs.push(i);
         }
+        database.reset();
         callback(idxs);
         return true;
       });
@@ -56,6 +60,12 @@ var database = {
     database.blocked = false;
     for (var i = 0; i < waiters.length; i++) {
       waiters[i]();
+    }
+  },
+  reset: function() {
+    database.training = false;
+    for (var t in database.source) {
+      database.source[t].dirty = false;
     }
   },
 
@@ -100,21 +110,60 @@ var database = {
     });
   },
 
-  EnumerableSource: function(name, cols) {
+  EnumerableSource: function(name) {
     this.name = name;
-    this.cols = cols;
+    this.cols = {};
+    this.colnames = [];
     this.rows = -1;
     this.pages = {};
+    this.page_width = 1;
+    this.dirty = false;
 
     this.getNumRows = function() {
-      if(this.rows < 0) {
-        this.rows = 100;
+      if (database.training) {
+        this.dirty = true;
+        this.rows = 10;
+      } else {
+        var key = database.get_page_key(this.name, 0);
+        if (this.pages[key] && this.pages[key]['total']) {
+            this.rows = this.pages[key]['total']
+        } else {
+          log.warn("Unrealized table " + this.name + " queried.");
+          throw new Error("Access to uninitialized table");
+        }
       }
       return this.rows;
     };
     
     this.getRow = function(index) {
-        return {i:index, n:1};
+        var data = [];
+        if (database.training) {
+          this.dirty = true;
+          var row = {};
+          for (var i = 0; i < this.colnames.length; i++) {
+            var type = this.cols[this.colnames[i]].toLowerCase();
+            var val = index;
+            if (type.indexOf("char") > -1) val = String.fromCharCode(97 + index);
+            else if (type.indexOf("date") > -1) val = Date.now() - index;
+            else if (type.indexOf("float") > -1 ) val = index + Math.random();
+            data.push(val);
+          }
+          return row;
+        } else {
+          var page_offset = index % this.page_width;
+          var key = database.get_page_key(this.name, index - page_offset);
+          var page = this.pages[key];
+          if (!page) {
+            log.warn("Unrealized access to page " + key);
+            throw new Error("Access to nonexistent data page");
+          }
+          data = page['rows'][page_offset];
+        }
+        var row = {};
+        for (var i = 0; i < this.colnames.length; i++) {
+            row[this.colnames[i]] = this.data[i];
+        }
+        return row;
     };
 
     var that = this;
@@ -142,7 +191,7 @@ var database = {
   init: function() {
     database.EnumerableSource.prototype = jsinq.Enumerable.prototype;
     var build_table_def = function(name, create) {
-      var obj = new database.EnumerableSource(name, {});
+      var obj = new database.EnumerableSource(name);
       var rows = create.split('\n');
       for (var i = 1; i < rows.length; i++) {
         if (rows[i].trim().match(/(PRIMARY KEY|UNIQUE|FOREIGN KEY)/))
@@ -150,6 +199,7 @@ var database = {
         var kv = rows[i].trim().match(/([\S]*)\s+([\S]*)/i);
         if (kv == null || kv.length < 3)
             continue;
+        obj.colnames.push(kv[1]);
         obj.cols[kv[1]] = kv[2];
       }
 
