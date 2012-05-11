@@ -3,13 +3,18 @@
  * @author ryscheng
  * @project WebP2P
  **/
-#include <cstdio>
-#include <string>
+#include <stdio.h>
+#include <string.h>
 #include "ppapi/cpp/instance.h"
 #include "ppapi/cpp/module.h"
 #include "ppapi/cpp/var.h"
 
 #include "tcp_socket.h"
+
+namespace {
+  const char* const kLoadedStr = "LOADED";
+  const char* const kReplyStr = "HEWO BACK ATCHA";
+}
 
 /// The Instance class.  One of these exists for each instance of your NaCl
 /// module on the web page.  The browser will ask the Module object to create
@@ -25,10 +30,9 @@ class NaclTransportInstance : public pp::Instance {
     /// The constructor creates the plugin-side instance.
     /// @param[in] instance the handle to the browser-side plugin instance.
     explicit NaclTransportInstance(PP_Instance instance) : pp::Instance(instance) {
-      TcpSocket* sock = new TcpSocket(); 
-      delete sock;
     }
-    virtual ~NaclTransportInstance() {}
+    virtual ~NaclTransportInstance() {
+    }
 
     /// Handler for messages coming in from the browser via postMessage().  The
     /// @a var_message can contain anything: a JSON string; a string that encodes
@@ -42,8 +46,20 @@ class NaclTransportInstance : public pp::Instance {
     /// with the parameter.
     /// @param[in] var_message The message posted by the browser.
     virtual void HandleMessage(const pp::Var& var_message) {
-    // TODO(sdk_user): 1. Make this function handle the incoming message.
+      // TODO(sdk_user): 1. Make this function handle the incoming message.
+      if (!var_message.is_string()) {
+        return;
+      }
+      TcpSocket* sock = new TcpSocket(); 
+      delete sock;
+      this->log(kReplyStr);
     }
+
+    void log(char const* msg) {
+      pp::Var var_msg = pp::Var(msg);
+      PostMessage(var_msg);
+    }
+  private:
 };
 
 

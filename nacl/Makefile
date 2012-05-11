@@ -16,7 +16,7 @@
 #
 PROJECT:=nacl_transport
 LDFLAGS:=-lppapi_cpp -lppapi
-CXX_SOURCES:=$(PROJECT).cc tcp_socket.cc
+CXX_SOURCES:=tcp_socket.cc $(PROJECT).cc
 
 
 #
