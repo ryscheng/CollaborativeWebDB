@@ -11,18 +11,33 @@ var database = {
         database.init();
       return;
     }
-    //TODO: execute the query, and run callback with the resulting tuples.
+
     window.setTimeout(function() {
+      var q;
+      if (!query.length) {
+        return callback(null, "No Query");
+      }
+      log.write("evaluating " + query.trim());
       try {
-        var q = new jsinq.Query(query);
+        q = new jsinq.Query(query);
+      } catch(e) {
+        log.warn("error constructing query");
+        callback(null, e);
+        return;
+      }
+      try {
         callback(q.getQueryFunction()(database.source));
       } catch(e) {
+        log.warn("error generating enumerator");
+        console.log(q.getQueryFunction());
         callback(null, e);
       }
     }, 0);
   },
   get_schema: function(query, callback) {
     database.execute(query, function(enumerable, error) {
+    if (error)
+      console.log(error.stack);
       if (!enumerable) {
         return callback([], error);
       }
@@ -32,6 +47,7 @@ var database = {
           idxs.push(i);
         }
         callback(idxs);
+        return true;
       });
     });
   },
@@ -85,9 +101,8 @@ var database = {
     this.getNumRows = function() {
       if(this.rows < 0) {
         this.rows = 100;
-      } else {
-        return this.rows;
       }
+      return this.rows;
     };
     
     this.getRow = function(index) {
@@ -102,6 +117,7 @@ var database = {
           ++index;
           return index < that.getNumRows();
         };
+
         this.current = function() {
           if (index < 0 || index > that.getNumRows()) {
             throw new InvalidOperationException();
@@ -110,7 +126,7 @@ var database = {
         };
         this.reset = function() {
           index = -1;
-        }
+        };
       };
     };
   },
