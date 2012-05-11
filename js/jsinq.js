@@ -180,11 +180,11 @@
 				 * @return False if the cursor has been moved past the end of 
 				 * 	the collection
 				 */
-				this.moveNext = function() {
+				this.moveNext = function(callback) {
 					++index;
-					return index < value.length;
-				};					
-							
+					callback(index < value.length);
+				};
+
 				/**
 				 * Returns the element in the collection that the internal  
 				 * cursor currently points to. Make sure to call moveNext 
@@ -198,8 +198,8 @@
 						throw new InvalidOperationException();
 					}
 					return value[index];
-				};	
-						
+				};
+										
 				/**
 				 * Places the internal cursor before the first element in the 
 				 * collection.
@@ -231,14 +231,14 @@
 				return new function() {
 					var index = -1;
 					var hasNext = false;
-					this.moveNext = function() {
+					this.moveNext = function(callback) {
 						hasNext = false;
 						if (index < count - 1) {
 							hasNext = true;
 							++index;
-							return true;
+							callback(true);
 						}
-						return false;
+						callback(false);
 					};
 					
 					this.current = function() {
@@ -247,7 +247,7 @@
 						} else {
 							throw new InvalidOperationException();	
 						}
-					};	
+					};
 					
 					this.reset = function() { 
 						index = -1;
@@ -271,14 +271,14 @@
 				return new function() {
 					var index = -1;
 					var hasNext = false;
-					this.moveNext = function() {
+					this.moveNext = function(callback) {
 						hasNext = false;
 						if (index < count - 1) {
 							hasNext = true;
 							++index;
-							return true;
+							callback(true);
 						}
-						return false;
+						callback(false);
 					};
 					
 					this.current = function() {
@@ -374,11 +374,11 @@
 									getEnumerator();
 							}
 							
-							this.moveNext = function() {
+							this.moveNext = function(callback) {
 								if (itemEnumerator == null) {
 									lazyInitialize();
 								}
-								return itemEnumerator.moveNext();
+								callback(itemEnumerator.moveNext());
 							};
 							
 							this.current = function() {
@@ -387,7 +387,7 @@
 								}	
 								return itemEnumerator.current();
 							};
-							
+														
 							this.reset = function() {
 								if (itemEnumerator != null) {
 									itemEnumerator.reset();
@@ -456,46 +456,61 @@
 							var secondList = null;
 							var index = -1;
 							
-							function lazyInitialize() {
+							function lazyInitialize(done) {
 								dictionary = new Dictionary(comparer);
 								var secondEnumerator = second.getEnumerator();
-								while (secondEnumerator.moveNext()) {
-									var current = secondEnumerator.current();
-									var key = innerKeySelector(current);
-									if (!dictionary.tryAdd(key, [current])) {
-										var array = dictionary.item(key);
-										array.push(current);
-									}
-								}
+
+								var iter = function(more) {
+								  var current = secondEnumerator.current();
+							  	  var key = innerKeySelector(current);
+								  if (!dictionary.tryAdd(key, [current])) {
+									var array = dictionary.item(key);
+									array.push(current);
+								  }
+								
+								  if (more) {
+								    secondEnumerator.moveNext(iter);
+								  } else {
+								    done();
+								  }
+								};
+								secondEnumerator.moveNext(iter);
 							}
 							
-							this.moveNext = function() {
+							this.moveNext = function(callback) {
+							    var that = this;
 								if (dictionary == null) {
-									lazyInitialize();	
-								}		
+									return lazyInitialize(function() {
+									    that.moveNext(callback);
+									});
+								}
 								var current;
 								var key;
 								if (group) {
-									hasNext = enumerator.moveNext();
-									if (hasNext) {										
-										current = enumerator.current();
-										key = outerKeySelector(current);
-										firstElement = current;
-										if (dictionary.containsKey(key)) {
-											secondElement = new Enumerable(
-												dictionary.item(key));
-										} else {
-											secondElement = Enumerable.empty();
-										}
-									}
+								    enumerator.moveNext(function(more) {
+									    hasNext = more;
+									    if (hasNext) {										
+									    	current = enumerator.current();
+								    		key = outerKeySelector(current);
+							    			firstElement = current;
+						    				if (dictionary.containsKey(key)) {
+					    						secondElement = new Enumerable(
+				    								dictionary.item(key));
+			    							} else {
+		    									secondElement = Enumerable.empty();
+	    									}
+    									}
+    									callback(hasNext);
+								    }.bind(this));
 								} else {
 									if (secondList != null && ++index < 
 										secondList.length) {
 										secondElement = secondList[index];
 										hasNext = true;
+										return callback(hasNext);
 									} else {
 										hasNext = false;
-										while (enumerator.moveNext()) {
+										var iter = function(more) {
 											current = enumerator.current();
 											key = outerKeySelector(current);
 											if (dictionary.containsKey(key)) {
@@ -505,14 +520,14 @@
 												index = 0;
 												hasNext = true;
 												firstElement = current;
-												break;
+												callback(hasNext);
 											} else {
-												continue;
-											}														
-										}
+											    enumerator.moveNext(iter);
+											}																		    
+										}.bind(this);
+										enumerator.moveNext(iter);
 									}
 								}
-								return hasNext;
 							};
 							
 							this.current = function() {
@@ -540,49 +555,63 @@
 			 * function. 
 			 *
 			 * Overloads:
-			 *   aggregate(func)
-			 *   aggregate(seed, func)
-			 *   aggregate(seed, func, resultSelector)
+			 *   aggregate(cb,func)
+			 *   aggregate(cb,seed, func)
+			 *   aggregate(cb,seed, func, resultSelector)
 			 */
 			aggregate: function() {
 				var enumerator = this.getEnumerator();
+				var cb = arguments[0];
 				
 				var running;
 				var func;
 				var resultSelector = identity;
-				if (arguments.length >= 2) {
-					running = arguments[0];
-					func = arguments[1];
-					if (arguments.length >= 3) {
-						resultSelector = arguments[2];
+				var iter = function(more) {
+				    running = func(running, enumerator.current());
+				    if(more) {
+				        enumerator.moveNext(iter);
+				    } else {
+			           cb(resultSelector(running));
+		    	    }
+	    		};
+	    		var continuation = function() {
+    				enumerator.moveNext(iter);
+				};
+				if (arguments.length >= 3) {
+					running = arguments[1];
+					func = arguments[2];
+					if (arguments.length >= 4) {
+						resultSelector = arguments[3];
 					}
+					continuation();
 				} else {
-					if (!enumerator.moveNext()) {
-						throw new InvalidOperationException();
-					}						
-
-					func = arguments[0];		
-					running = enumerator.current();
+					func = arguments[1];		
+				    enumerator.moveNext(function(more) {
+				        if (!more) {
+				            throw new InvalidOperationException();
+				        }
+				        running = enumerator.current();
+				        continuation();
+				    });
 				}
-							
-				while (enumerator.moveNext()) {
-					running = func(running, enumerator.current());
-				} 
-				return resultSelector(running);
 			},
 			
 			/**
 			 * Returns true if all elements in the Enumerable satisfy the 
 			 * specified condition.
 			 */
-			all: function(predicate) {		
+			all: function(cb, predicate) {		
 				var enumerator = this.getEnumerator();
-				while (enumerator.moveNext()) {
-					if (!predicate(enumerator.current())) {
-						return false;
-					}
-				}				
-				return true;
+				var iter = function(more) {
+    				if (!predicate(enumerator.current())) {
+    				    cb(false);
+    				} else if(more) {
+    				    enumerator.moveNext(iter);
+    				} else {
+    				    cb(true);
+    				}
+	    		};
+	    		enumerator.moveNext(iter);
 			},
 			
 			/**
@@ -591,21 +620,25 @@
 			 * condition.
 			 *
 			 * Overloads:
-			 *   any()
-			 *   any(predicate)
+			 *   any(cb)
+			 *   any(cb,predicate)
 			 */		
-			any: function(predicate) {
+			any: function(cb, predicate) {
 				var enumerator = this.getEnumerator();
 				if (arguments.length == 0) {
-					return enumerator.moveNext();
+					enumerator.moveNext(cb);
 				}
 				var array = [];
-				while (enumerator.moveNext()) {
-					if (predicate(enumerator.current())) {
-						return true;
-					}
-				}				
-				return false;					
+				var iter = function(more) {
+    				if (predicate(enumerator.current())) {
+    				    cb(true);
+    				} else if(more) {
+    				    enumerator.moveNext(iter);
+    				} else {
+    				    cb(false);
+    				}
+	    		};
+	    		enumerator.moveNext(iter);
 			},
 			
 			/**
@@ -613,20 +646,21 @@
 			 * optionally using the specified selector function.
 			 *
 			 * Overloads:
-			 *   average()
-			 *   average(selector)
+			 *   average(cb)
+			 *   average(cb,selector)
 			 */		
-			average: function(selector) {
-				if (arguments.length == 0) {
+			average: function(cb, selector) {
+				if (arguments.length == 1) {
 					selector = identity;
 				}
 				
 				var count = 1;
-				var sum = this.aggregate(function(running, current) {
+				this.aggregate(function(sum) {
+				    cb(sum / count);
+				}, function(running, current) {
 					++count;	
 					return running + selector(current);
 				});
-				return sum / count;
 			},
 			
 			/**
@@ -642,15 +676,19 @@
 							var secondEnumerator = second.getEnumerator();
 							var enumerator = firstEnumerator;
 							var canSwap = true;
-							this.moveNext = function() {
-								if (!enumerator.moveNext()) {
-									if (canSwap) {
-										enumerator = secondEnumerator;
-										return enumerator.moveNext();
-									}
-									return false;
-								}
-								return true;
+							this.moveNext = function(cb) {
+							    enumerator.moveNext(function(more) {
+							        if (more) {
+							            cb(true);
+							        } else {
+							            if (canSwap) {
+							                enumerator = secondEnumerator;
+							                canSwap = false;
+							                enumerator.moveNext(cb);
+							            }
+							            cb(false);
+							        }
+							    }.bind(this));
 							};
 							
 							this.current = function() {
@@ -675,17 +713,17 @@
 			 * Optionally uses the specified comparer.
 			 * 
 			 * Overloads:
-			 *   contains(value)
-			 *   contains(value, comparer)
+			 *   contains(cb, value)
+			 *   contains(cb, value, comparer)
 			 */		
-			contains: function(value, comparer) {
-				if (arguments.length == 1) {
+			contains: function(cb, value, comparer) {
+				if (arguments.length == 2) {
 					comparer = EqualityComparer.getDefault();
 				}
 				if (typeof comparer == "function") {
 					comparer = EqualityComparer.fromFunction(comparer);
 				}										
-				return this.any(function(item) {
+				return this.any(cb, function(item) {
 					return comparer.equals(item, value);
 				});		
 			},
@@ -695,31 +733,37 @@
 			 * function is specified, only those elements will be counted that
 			 * satisfy the given condition.
 			 */		
-			count: function(predicate) {
+			count: function(cb, predicate) {
 				var count = 0;
 				var enumerator = this.getEnumerator();
 				var hasPredicate = typeof predicate == 'function';
-				while (enumerator.moveNext()) {
+				var iter = function(more) {
 					if ((hasPredicate && predicate(enumerator.current())) || 
 						!hasPredicate) {
 						++count;
 					}						
-				}				
-				return count;
+				    if (more) {
+				        enumerator.moveNext(iter);
+				    } else {
+				        cb(count);
+				    }
+				};
 			},				
 			
 			/**
 			 * Returns the Enumerable or a new Enumerable containing only the 
 			 * specified default value, should the Enumerable be empty.
 			 */		
-			defaultIfEmpty: function(defaultValue) {
-				var isEmpty = !this.any(function(item) {
+			defaultIfEmpty: function(cb, defaultValue) {
+				this.any(function(hasItem) {
+    				if (hasItem) {
+    				    cb(this);
+	    			} else {
+	    			    cb(new Enumerable(defaultValue));
+		    		}
+				}, function(item) {
 					return true;
 				});						
-				if (isEmpty) {
-					return new Enumerable(defaultValue);
-				}
-				return this;
 			},
 			
 			/**
@@ -749,14 +793,18 @@
 								dictionary = new Dictionary();
 							}			
 								
-							this.moveNext = function() {
-								while (enumerator.moveNext()) {
+							this.moveNext = function(cb) {
+							    var iter = function(more) {
 									if (dictionary.tryAdd(
 										enumerator.current(), true)) {
-										return true;											
+										cb(true);											
+									} else if (more) {
+									    enumerator.moveNext(iter);
+									} else {
+									    cb(false);
 									}
-								}
-								return false;
+							    };
+							    enumerator.moveNext(iter);
 							};
 							
 							this.current = function() {
@@ -778,16 +826,14 @@
 			 * Returns the element at the specified offset or throws an 
 			 * exception if the index is out of bounds.
 			 */		
-			elementAt: function(index) {
+			elementAt: function(cb, index) {
 				var element;
-				var found = this.any(function(item) {
+				return this.any(function(found) {
+				    return cb(found ? element: null);
+				}, function(item) {
 					element = item;
 					return index-- == 0;
 				});	
-				if (!found) {
-					throw new ArgumentOutOfRangeException('index');
-				}
-				return element;
 			},
 			
 			/**
@@ -796,12 +842,14 @@
 			 * implementation in that the default value needs to be specified 
 			 * explicitly.
 			 */		
-			elementAtOrDefault: function(index, defaultValue) {
-				try {
-					return this.elementAt(index);
-				} catch (e) {
-					return defaultValue;
-				}	
+			elementAtOrDefault: function(cb, index, defaultValue) {
+			    this.elementAt(function(element) {
+			        if (element === null) {
+			            cb(defaultValue);
+			        } else {
+			            cb(element);
+			        }
+			    }, index);
 			},
 			
 			/**
@@ -815,17 +863,21 @@
 			 *   except(second, comparer)
 			 */		
 			except: function(second, comparer) {
-				if (arguments.length < 2) {
+				if (arguments.length < 3) {
 					comparer = EqualityComparer.getDefault();
 				}
 				if (typeof comparer == "function") {
 					comparer = EqualityComparer.fromFunction(comparer);
-				}										
-				return this.where(function(item) {
-					return !second.any(function(compare) {
+				}
+				var func = function(item, continuation) {
+					second.any(function(found) {
+					    continuation(!found);
+					}, function(compare) {
 						return comparer.equals(item, compare);
 					});
-				});	
+				};
+				func.async = true;
+				return this.where(func);
 			},
 			
 			/**
@@ -837,29 +889,24 @@
 			 * thrown.
 			 *
 			 * Overloads:
-			 *   first()
-			 *   first(predicate)
+			 *   first(cb)
+			 *   first(cb, predicate)
 			 */		
-			first: function(predicate) {
-				if (arguments.length == 0) {
-					try {
-						return this.elementAt(0);
-					} catch (e) {
-						throw new InvalidOperationException();	
-					}
+			first: function(cb, predicate) {
+				if (arguments.length == 1) {
+					return this.elementAt(cb, 0);
 				} else {
 					var element;
-					var found = this.any(function(item) {
+					return this.any(function(found) {
+					    var el = found? element: null;
+					    return cb(el);
+					}, function(item) {
 						if (predicate(item)) {
 							element = item;
 							return true;
 						}
 						return false;
 					});
-					if (!found) {
-						throw new InvalidOperationException();
-					}
-					return element;
 				}
 			},
 			
@@ -871,25 +918,26 @@
 			 * explicitly.
 			 *
 			 * Overloads:
-			 *   firstOrDefault(defaultValue)
-			 *   firstOrDefault(predicate, defaultValue)
+			 *   firstOrDefault(cb, defaultValue)
+			 *   firstOrDefault(cb, predicate, defaultValue)
 			 */		
 			firstOrDefault: function() {
-				if (arguments.length == 1) {
-					var defaultValue = arguments[0];	
-				} else if (arguments.length > 1) {
-					var predicate = arguments[0];
-					var defaultValue = arguments[1];
+			    var cb = arguments[0];
+				if (arguments.length == 2) {
+					var defaultValue = arguments[1];	
+				} else if (arguments.length > 2) {
+					var predicate = arguments[1];
+					var defaultValue = arguments[2];
 				}
-				try {
-					if (arguments.length > 1) {
-						return this.first(predicate);
-					} else {
-						return this.first();
-					}
-				} catch (e) {
-					return defaultValue;
-				}						
+				var def = function(val) {
+				    var el = (val == null)? val : defaultValue;
+				    return cb(el);
+				};
+				if (arguments.length > 2) {
+					this.first(def, predicate);
+				} else {
+					this.first(def);
+				}
 			},
 			
 			/**
@@ -952,40 +1000,53 @@
 				var func = function() {
 					this.getEnumerator = function() {
 						return new function() {
-							var resultSet = null;
-							var index = -1;
+							this.resultSet = null;
+							this.index = -1;
 							
-							function lazyInitialize() {
+							function lazyInitialize(obj, done) {
 								var itemEnumerator = _this.getEnumerator();
 								var dictionary = new Dictionary(comparer);
 								
-								while (itemEnumerator.moveNext()) {
-									var current = itemEnumerator.current();
-									var key = keySelector(current);	
-									if (dictionary.containsKey(key)) {
-										var array = dictionary.item(key);
-										array.push(elementSelector(current));
-									} else {
-										dictionary.tryAdd(key, 
-											[elementSelector(current)]);
-									}
-								}									
-								resultSet = dictionary.toArray();
+								_this.iterate(function(item, idx, state, more) {
+								    if (!more) {
+								        state.self.resultSet = state.dict.toArray();
+								        state.done();
+								        return false;
+								    }
+								    var key = state.keyer(item);
+								    if (state.dict.containsKey(key)) {
+								        var array = state.dict.item(key);
+								        array.push(state.selector(item));
+								    } else {
+								        state.dict.tryAdd(key, [state.selector(item)]);
+								    }
+								    return true;
+								}, {
+								    keyer: keySelector,
+								    self: obj,
+								    dict: dictionary,
+								    selector: elementSelector,
+								    done: done
+								}, itemEnumerator);
 							}
 							
-							this.moveNext = function() {
-								if (resultSet == null) {
-									lazyInitialize();
-								}
-								++index;
-								return index < resultSet.length;
+							this.moveNext = function(cb) {
+								if (this.resultSet == null) {
+									lazyInitialize(this, function() {
+        								this.index++;
+	        							cb(this.index < this.resultSet.length);									    
+									}.bind(this));
+								} else {
+    								this.index++;
+	    							cb(this.index < this.resultSet.length);
+	    						}
 							};
 							
 							this.current = function() {
-								if (index < 0 || index >= resultSet.length) {
+								if (this.index < 0 || this.index >= this.resultSet.length) {
 									throw new InvalidOperationException();
 								}
-								var current = resultSet[index];
+								var current = this.resultSet[this.index];
 								var elements = new Enumerable(
 									current.value);
 								if (resultSelector != identity) {		
@@ -998,7 +1059,7 @@
 							};
 							
 							this.reset = function() {
-								index = -1;
+								this.index = -1;
 							};
 						};
 					};
@@ -1033,10 +1094,12 @@
 				}
 				if (typeof comparer == "function") {
 					comparer = EqualityComparer.fromFunction(comparer);
-				}										
-				return this.distinct(comparer).where(function(item) {
-					return second.contains(item, comparer);
-				});
+				}			
+				var func = function(item, continuation) {
+					second.contains(continuation, item, comparer);
+				};
+				func.async = true;							
+				return this.distinct(comparer).where(func);
 			},
 			
 			/**
@@ -1059,26 +1122,27 @@
 			 * specified condition, an exception is thrown.
 			 *
 			 * Overloads:
-			 *   last()
-			 *   last(predicate)
+			 *   last(cb)
+			 *   last(cb,predicate)
 			 */		
-			last: function(predicate) {
+			last: function(cb, predicate) {
 				var hasPredicate = typeof predicate == 'function';
 				
 				var last;
 				var isEmpty = true;
-				this.any(function(item) {
+				this.any(function() {
+				    if (isEmpty) {
+				        cb(null);
+				    } else {
+    				    cb(last);
+    				}
+				}, function(item) {
 					if (!hasPredicate || predicate(item)) {
 						last = item;
 						isEmpty = false;
 					}
 					return false;	
-				});					
-				
-				if (isEmpty) {
-					throw new InvalidOperationException();	
-				}				
-				return last;
+				});
 			},
 			
 			/**
@@ -1089,40 +1153,44 @@
 			 * explicitly.
 			 *
 			 * Overloads:
-			 *   lastOrDefault(defaultValue)
-			 *   lastOrDefault(predicate, defaultValue)
+			 *   lastOrDefault(cb, defaultValue)
+			 *   lastOrDefault(cb, predicate, defaultValue)
 			 */		
 			lastOrDefault: function() {
-				if (arguments.length == 1) {
-					var defaultValue = arguments[0];	
-				} else if (arguments.length > 1) {
-					var predicate = arguments[0];
+			    var cb = arguments[0];
+				if (arguments.length == 2) {
 					var defaultValue = arguments[1];
+				} else if (arguments.length > 2) {
+					var predicate = arguments[1];
+					var defaultValue = arguments[2];
 				}
-				try {
-					if (arguments.length > 1) {
-						return this.last(predicate);
-					} else {
-						return this.last();
-					}
-				} catch (e) {
-					return defaultValue;
-				}						
+				var def = function(val) {
+				    if (val == null) {
+				        cb(defaultValue);
+				    } else {
+				        cb(val);
+				    }
+				};
+				if (arguments.length > 2) {
+					return this.last(cb, predicate);
+				} else {
+					return this.last(cb);
+				}
 			},
 			
 			/**
 			 * Returns the maximum value in the Enumerable.
 			 * 
 			 * Overloads:
-			 *   max()
-			 *   max(selector)
+			 *   max(cb)
+			 *   max(cb, selector)
 			 */		
-			max: function(selector) {
-				if (arguments.length == 0) {
+			max: function(cb, selector) {
+				if (arguments.length == 1) {
 					selector = identity;
 				}
 				var isFirst = true;
-				return this.aggregate(function(running, current) {
+				this.aggregate(cb, function(running, current) {
 					if (isFirst) {
 						running = selector(running);
 						isFirst = false;
@@ -1135,15 +1203,15 @@
 			 * Returns the minimum value in the Enumerable.
 			 * 
 			 * Overloads:
-			 *   min()
-			 *   min(selector)
+			 *   min(cb)
+			 *   min(cb, selector)
 			 */		
-			min: function(selector) {
-				if (arguments.length == 0) {
+			min: function(cb, selector) {
+				if (arguments.length == 1) {
 					selector = identity;
 				}
 				var isFirst = true;
-				return this.aggregate(function(running, current) {
+				this.aggregate(cb, function(running, current) {
 					if (isFirst) {
 						running = selector(running);
 						isFirst = false;
@@ -1180,13 +1248,16 @@
 						return new function() {
 							var enumerator = null;
 							
-							this.moveNext = function() {
+							this.moveNext = function(cb) {
 								if (enumerator == null) {
-									enumerator = new Enumerable(
-										_this.toArray().reverse()).
-										getEnumerator();
-								}
-								return enumerator.moveNext();
+								    _this.toArray(function(a) {
+								        enumerator = new Enumerable(a.reverse()).
+								            getEnumerator();
+								        enumerator.moveNext(cb);
+								    });
+								} else {
+    								enumerator.moveNext(cb);
+    							}
 							};
 							
 							this.current = function() {
@@ -1221,15 +1292,31 @@
 						return new function() {
 							var itemEnumerator = _this.getEnumerator();
 							var index = -1;
+							this.value = undefined;
 							
-							this.moveNext = function() {
+							this.moveNext = function(cb) {
 								++index;
-								return itemEnumerator.moveNext();							
+								itemEnumerator.moveNext(function(more) {
+								    if (!more) {
+								        this.value = undefined;
+								        cb(false);
+								        return;
+								    }
+								    var val = selector(itemEnumerator.current(), index);
+								    if (typeof val == 'function') {
+								        val(function(ret) {
+								            this.value = ret;
+								            cb(true);
+								        }.bind(this));
+								    } else {
+								        this.value = val;
+								        cb(true);
+								    }
+								}.bind(this));
 							};
 							
 							this.current = function() {
-								return selector(itemEnumerator.current(), 
-									index);
+							    this.value;
 							};			
 							
 							this.reset = function() {
@@ -1260,54 +1347,65 @@
 				var func = function() {	
 					this.getEnumerator = function() {
 						return new function() {
-							var itemEnumerator = _this.getEnumerator();
-							var item = null;
-							var subItemEnumerator = null;
-							var hasCurrent = false;
-							var index = 0;
+							this.itemEnumerator = _this.getEnumerator();
+							this.item = null;
+							this.subItemEnumerator = null;
+							this.hasCurrent = false;
 				
-							this.moveNext = function() {
-								hasCurrent = false;
-								var noMoveNext = true;
-								while (true) {
-									if (subItemEnumerator == null || 
-										!subItemEnumerator.moveNext()) {
-										if (!itemEnumerator.moveNext()) {										
-											break;
-										}
-										item = itemEnumerator.current();
-										subItemEnumerator = 
-											collectionSelector(item, index++).
-											getEnumerator();
-										noMoveNext = false;
-									}		
-									if (noMoveNext || 
-										subItemEnumerator.moveNext()) {
-										hasCurrent = true;
-										break;
-									}
-								}	
-								return hasCurrent;
+							this.moveNext = function(cb) {
+								this.hasCurrent = false;
+								
+								if (this.subItemEnumerator != null) {
+								    _this.iterate(function(item, idx, state, more) {
+								        if (more) {
+								            state.self.hasCurrent = true;
+								            state.cb(true);
+								            return false;
+								        } else {
+								            state.self.subItemEnumerator = null;
+								            state.self.moveNext(cb);
+								            return false;
+								        }
+								    }, {
+								        self: this,
+								        cb : cb
+								    }, this.subItemEnumerator);
+								} else {
+								    _this.iterate(function(item, idx, state, more) {
+								        if (more) {
+									        state.self.item = item;
+								            state.self.subItemEnumerator = collectionSelector(item, idx).getEnumerator();
+								            window.setTimeout(function() {state.self.moveNext(cb);}, 0);
+								            return false;
+								        } else {
+								            state.self.hasCurrent = false;
+								            state.cb(false);
+								            return false;
+								        }
+								    }, {
+								        self: this,
+								        cb: cb
+								    }, this.itemEnumerator);
+								}
 							};
 								
 							this.current = function() {
-								if (!hasCurrent) {
+								if (!this.hasCurrent) {
 									throw new InvalidOperationException();
 								}
 								if (hasResultSelector) {
-									return resultSelector(item, 
-										subItemEnumerator.current());
+									return resultSelector(this.item, 
+										this.subItemEnumerator.current());
 								} else {
-									return subItemEnumerator.current();
+									return this.subItemEnumerator.current();
 								}
 							};
 							
 							this.reset = function() {
-								hasCurrent = false;
-								subItemEnumerator = null;
-								item = null;
-								itemEnumerator.reset();
-								index = 0;
+								this.hasCurrent = false;
+								this.subItemEnumerator = null;
+								this.item = null;
+								this.itemEnumerator.reset();
 							};
 						};
 					};
@@ -1322,30 +1420,39 @@
 			 * comparer.
 			 *
 			 * Overloads:
-			 *   sequenceEqual(second)
-			 *   sequenceEqual(second, comparer)
+			 *   sequenceEqual(cb, second)
+			 *   sequenceEqual(cb, second, comparer)
 			 */		
-			sequenceEqual: function(second, comparer) {
+			sequenceEqual: function(cb, second, comparer) {
 				if (this == second) {
 					return true;
 				}
-				if (arguments.length < 2) {
+				if (arguments.length < 3) {
 					comparer = EqualityComparer.getDefault();
 				}				
 				if (typeof comparer == "function") {
 					comparer = EqualityComparer.fromFunction(comparer);
-				}										
-				var firstEnumerator = this.getEnumerator();
+				}
 				var secondEnumerator = second.getEnumerator();
 				
-				while (firstEnumerator.moveNext() && 
-					secondEnumerator.moveNext()) {
-					if (!comparer.equals(firstEnumerator.current(), 
-						secondEnumerator.current())) {
-						return false;
-					}
-				}					
-				return true;
+				this.iterate(function(item, idx, state, more) {
+				    return function(continuation) {
+				        if (!more)
+				            return state.cb(true);
+				        state.other.moveNext(function(other_more) {
+				            if (!other_more)
+				                return state.cb(true);
+				            if (!state.comparer.equals(item, state.other.current())) {
+				                return state.cb(false);
+				            }
+				            continuation();
+				        });
+				    };
+				}, {
+				    other: second.getEnumerator(),
+				    cb: cb,
+				    comparer: comparer
+				});
 			},
 			
 			/**
@@ -1356,21 +1463,26 @@
 			 * exception if the element does not satisfy its condition.
 			 *
 			 * Overloads:
-			 *   single()
-			 *   single(predicate)
+			 *   single(cb)
+			 *   single(cb, predicate)
 			 */		
-			single: function(predicate) {
-				var hasPredicate = arguments.length > 0;
+			single: function(cb, predicate) {
+				var hasPredicate = arguments.length > 1;
 				var enumerator = this.getEnumerator();
-				if (!enumerator.moveNext()) {
-					throw new InvalidOperationException();	
-				} 
-				var current = enumerator.current();
-				if (enumerator.moveNext() || (hasPredicate && 
-					!predicate(current))) {
-					throw new InvalidOperationException();	
-				}
-				return current;
+				enumerator.moveNext(function(more) {
+				    if (!more) { cb(null); }
+				    var current = enumerator.current();
+				    enumerator.moveNext(function(more) {
+				        if(more) { cb(null); }
+				        if (hasPredicate) {
+				            predicate(current, function(pass) {
+				                if(!pass) { cb(null); } else { cb(current); }
+				            });
+				        } else {
+				            cb(current);
+				        }
+				    });
+				});
 			},
 			
 			/**
@@ -1381,25 +1493,25 @@
 			 * that it requires the default value to be specified explicitly.
 			 *
 			 * Overloads:
-			 *   singleOrDefault(defaultValue)
-			 *   singleOrDefault(predicate, defaultValue)
+			 *   singleOrDefault(cb, defaultValue)
+			 *   singleOrDefault(cb, predicate, defaultValue)
 			 */		
 			singleOrDefault: function() {
-				if (arguments.length == 1) {
-					var defaultValue = arguments[0];	
-				} else if (arguments.length > 1) {
-					var predicate = arguments[0];
-					var defaultValue = arguments[1];
+			    var cb = arguments[0];
+				if (arguments.length == 2) {
+					var defaultValue = arguments[1];	
+    				this.single(function(val) {
+    				    if(val == null) cb(defaultValue);
+    				    else cb(val);
+    				});
+				} else if (arguments.length > 2) {
+					var predicate = arguments[1];
+					var defaultValue = arguments[2];
+    				this.single(function(val) {
+    				    if(val == null) cb(defaultValue);
+    				    else cb(val);
+    				}, predicate);
 				}
-				try {
-					if (arguments.length > 1) {
-						return this.single(predicate);
-					} else {
-						return this.single();
-					}
-				} catch (e) {
-					return defaultValue;
-				}									
 			},
 			
 			/**
@@ -1429,17 +1541,25 @@
 							var isInitialized = false;
 							var index = 0;
 														
-							this.moveNext = function() {
+							this.moveNext = function(cb) {
 								if (!isInitialized) {
-									var canMoveNext = false;
-									while ((canMoveNext = 
-										enumerator.moveNext()) &&
-										predicate(enumerator.current(), 
-										index++)) { }
-									isInitialized = true;
-									return canMoveNext;
+								    this.iterate(function(item, idx, state, more) {
+								        if (!more)
+								            return state.cb(false);
+								        if (state.pred(item, idx)) {
+								            return true;
+								        } else {
+								            state.self.isInitialized = true;
+								            state.cb(true);
+								            return false;
+								        }
+								    }, {
+								        pred: predicate,
+								        self: this,
+								        cb: cb
+								    });
 								} else {
-									return enumerator.moveNext();
+									enumerator.moveNext(cb);
 								}
 							};
 							
@@ -1464,14 +1584,14 @@
 			 * using a specified selector.
 			 *
 			 * Overloads:
-			 *   sum()
-			 *   sum(selector)
+			 *   sum(cb)
+			 *   sum(cb, selector)
 			 */		
-			sum: function(selector) {
-				if (arguments.length == 0) {
+			sum: function(cb, selector) {
+				if (arguments.length == 1) {
 					selector = identity;
 				}
-				return this.aggregate(0, function(running, current) {
+				this.aggregate(cb, 0, function(running, current) {
 					return running + selector(current);
 				});
 			},		
@@ -1503,13 +1623,18 @@
 							var isOperational = true;
 							var index = 0;
 														
-							this.moveNext = function() {
+							this.moveNext = function(cb) {
 								if (isOperational) {
-									isOperational = enumerator.moveNext() && 
-										predicate(enumerator.current(), 
-										index++);
+								    enumerator.moveNext(function(more) {
+								        if (!more ||!predicate(enumerator.current(), index++))
+								        {
+								            isOperational = false;
+								        }
+								        cb(isOperational);
+								    });
+								} else {
+								    cb(false);
 								}
-								return isOperational;
 							};
 							
 							this.current = function() {
@@ -1534,13 +1659,18 @@
 			/**
 			 * Returns an array containg all the elements in Enumerable.
 			 */		
-			toArray: function() {
-				var enumerator = this.getEnumerator();
-				var array = [];
-				while (enumerator.moveNext()) {
-					array.push(enumerator.current());
-				}				
-				return array;
+			toArray: function(cb) {
+			    this.iterate(function(item, idx, state, more) {
+			        if(!more) {
+			            state.cb(state.array);
+			            return false;
+			        }
+			        state.array.push(item);
+			        return true;
+			    },{
+			        cb: cb,
+			        array: []
+			    });
 			},
 			
 			/**
@@ -1571,30 +1701,61 @@
 					this.getEnumerator = function() {
 						return new function() {
 							var itemEnumerator = _this.getEnumerator();
-							var current;
 							var hasCurrent = false;
-							this.moveNext = function() {
+							this.moveNext = function(cb) {
 								hasCurrent = false;
-								while (itemEnumerator.moveNext()) {
-									current = itemEnumerator.current();
-									if (predicate(current)) {
-										hasCurrent = true;
-										break;
-									}
+								
+								if (predicate.async) {
+							     	_this.iterate(function(item, idx, state, more) {
+							     	    if (!more) {
+							     	        state.callback(false);
+							     	        return false;
+							     	    }
+							     	    return function(continuation) {
+							     	        state.pred(item, function(result) {
+							     	            if (result) {
+							     	                state.self.hasCurrent = true;
+							     	                state.callback(true);
+							     	                return;
+							     	            }
+							     	            continuation();
+							     	        });
+							     	    }
+				    				}, {
+			    					    pred: predicate,
+		    						    callback: cb,
+	    							    self: this
+    								}, itemEnumerator);
+								} else {
+							     	_this.iterate(function(item, idx, state, more) {
+								        if (!more) {
+							    	        state.callback(false);
+							    	        return false;
+						    		    }
+		    						    if (state.pred(item)) {
+	    							        state.self.hasCurrent = true;
+    								        state.callback(more);
+								            return false;
+								        }
+					    		        return true;
+				    				}, {
+			    					    pred: predicate,
+		    						    callback: cb,
+	    							    self: this
+    								}, itemEnumerator);
 								}
-								return hasCurrent;
 							};
 							
 							this.current = function() {
-								if (!hasCurrent) {
+								if (!this.hasCurrent) {
 									throw new InvalidOperationException();
 								}
-								return current;
+								return itemEnumerator.current();
 							};			
 							
 							this.reset = function() {
 								itemEnumerator.reset();
-								hasCurrent = false;
+								this.hasCurrent = false;
 							};		
 						};
 					};
@@ -1616,14 +1777,16 @@
 							var secondEnumerator = second.getEnumerator();
 							var hasCurrent = false;
 							
-							this.moveNext = function() {
-								if (firstEnumerator.moveNext() &&
-									secondEnumerator.moveNext()) {
-									hasCurrent = true;
-									return true;
-								} else {
-									return false;
-								}
+							this.moveNext = function(cb) {
+							    firstEnumerator.moveNext(function(more) {
+							        if (!more) {
+							            return cb(false);
+							        }
+							        secondEnumerator.moveNext(function(more) {
+							            hasCurrent = more;
+							            cb(more);
+							        });
+							    });
 							};
 							
 							this.current = function() {
@@ -1650,10 +1813,10 @@
 			 * Create a dictionary from an enumerable
 			 *
 			 * Overloads:
-			 *   toDictionary(keySelector)
-			 *   toDictionary(keySelector, comparer)
+			 *   toDictionary(cb, keySelector)
+			 *   toDictionary(cb, keySelector, comparer)
 			 */
-			toDictionary: function(keySelector, comparer) {
+			toDictionary: function(cb, keySelector, comparer) {
 				if (typeof comparer == "function") {
 					comparer = EqualityComparer.fromFunction(comparer);
 				}						
@@ -1667,57 +1830,66 @@
 					dictionary = new Dictionary(comparer);
 				}
 				
-				var key; 
-				var current;
-				
-				while (enumerator.moveNext()) {
-					current = enumerator.current();
-					key = keySelector(current);
-					if (!dictionary.tryAdd(key, current)) {
-						throw new ArgumentException("keySelector");
-					}
-				}
-				
-				return dictionary;
+				this.iterate(function(item,idx,state,more) {
+				    var key = state.k(item);
+				    if (!state.d.tryAdd(key, item)) {
+				        state.c(null);
+				        return false;
+				    }
+				    if (!more) {
+				        state.c(state.d)
+				    }
+				    return true;
+				},{
+				    d: dictionary,
+				    k: keySelector,
+				    c: cb
+				});
 			},
 			
 			/**
 			 * Creates a list from an enumerable
 			 */
-			toList: function() {
-				return new List(this);
+			toList: function(cb) {
+			    this.toArray(function(items) {
+			        cb(new List({
+			            toArray: function() {
+			                return items;
+			            }
+			        }));
+			    });
 			},	
 				
 			/**
 			 * Creates a lookup from an enumerable
 			 *
 			 * Overloads:
-			 *   toLookup(keySelector)
-			 *   toLookup(keySelector, comparer)
-			 *   toLookup(keySelector, elementSelector)
-			 *   toLookup(keySelector, elementSelector, comparer)
+			 *   toLookup(cb,keySelector)
+			 *   toLookup(cb,keySelector, comparer)
+			 *   toLookup(cb,keySelector, elementSelector)
+			 *   toLookup(cb,keySelector, elementSelector, comparer)
 			 */
-			toLookup: function(keySelector) {
-				var keySelector = arguments[0];
+			toLookup: function(cb, keySelector) {
+				var keySelector = arguments[1];
 				var elementSelector = null;
 				var comparer = null;
 				var lookup;
 				
 				switch (arguments.length) {
-					case 2:
-						if (typeof arguments[1] == 'function') {
-							elementSelector = arguments[1];
-						} else {
-							comparer = arguments[1];
-						}
-						break;
 					case 3:
-						elementSelector = arguments[1];
-						if (typeof arguments[2] == "function") {
-							comparer = 
-								EqualityComparer.fromFunction(arguments[2]);
+						if (typeof arguments[2] == 'function') {
+							elementSelector = arguments[2];
 						} else {
 							comparer = arguments[2];
+						}
+						break;
+					case 4:
+						elementSelector = arguments[2];
+						if (typeof arguments[3] == "function") {
+							comparer = 
+								EqualityComparer.fromFunction(arguments[3]);
+						} else {
+							comparer = arguments[3];
 						}
 						break;
 				}
@@ -1734,35 +1906,73 @@
 				var current;
 				var grouping;
 				
-				while (enumerator.moveNext()) {
-					current = enumerator.current();
-					key = keySelector(current);
+                this.all(
+                    function(done) {
+                        cb(lookup);
+                    },
+                    function(item) {
+                        key = keySelector(item);
+                        try {
+						    grouping = lookup.item(key);
+					    } catch(e) {
+						    grouping = new Grouping(key);
+						    lookup.add(grouping);
+					    }
 					
-					try {
-						grouping = lookup.item(key);
-					} catch(e) {
-						grouping = new Grouping(key);
-						lookup.add(grouping);
-					}
-					
-					if (elementSelector) {
-						grouping.add(elementSelector(current));
-					} else {
-						grouping.add(current);
-					}
-				}
-				
-				return lookup;
+					    if (elementSelector) {
+						    grouping.add(elementSelector(current));
+					    } else {
+						    grouping.add(current);
+					    }
+                        return true;
+                    }
+                );
 			},
 				
 			/**
 			 * Convenience method for enumerating an enumerator.
 			 */	
 			each: function(func) {
-				var enumerator = this.getEnumerator();
-				while (enumerator.moveNext()) {
-					func(enumerator.current());
-				}
+			    this.iterate(function(item,idx) {
+			        func(item);
+			        return true;
+			    }, {});
+			},
+			
+			/**
+			 * boolean callback(item,index,more,state)
+			 */
+			iterate: function(cb, data, enumerator) {
+			    var state = {
+			        i : 0,
+			        e : enumerator || this.getEnumerator(),
+			        func: cb,
+			        s: data
+			    };
+			    state.onNext = function(more) {
+			        var item = more? this.e.current() : undefined;
+			        var ret = this.func(item, ++this.i, this.s, more);
+			        if (typeof ret == "function") {
+			            ret(more ? this.next.bind(this) : function() {});
+			        } else if (more && ret) {
+			            this.next();
+			        }
+			    };
+			    state.next = function() {
+			        // Come up for air.
+			        if (!window.__iterations) {
+			            window.__iterations = 1;
+			        }
+			        if (window.__iterations++ % 50 == 0) {
+			            window.setTimeout(function() {
+			                this.dirty = false;
+			                this.next();
+			            }.bind(this),0);
+			        }
+			        // Next.
+			        this.e.moveNext(this.onNext.bind(this));
+			    };
+			    state.next();
 			}
 		};
 	})();
@@ -2786,7 +2996,8 @@
 		/**
 		 * Applies a transform function to each key and its associated values 
 		 * and returns the results
-		 */		
+		 */	
+		 //TODO: make async
 		this.applyResultSelector = function(resultSelector) {
 			var _this = this;
 			

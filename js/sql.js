@@ -15,7 +15,7 @@ var database = {
     window.setTimeout(function() {
       try {
         var q = new jsinq.Query(query);
-        callback(q.execute(database.source));
+        callback(q.getQueryFunction()(database.source));
       } catch(e) {
         callback(null, e);
       }
@@ -23,16 +23,16 @@ var database = {
   },
   get_schema: function(query, callback) {
     database.execute(query, function(enumerable, error) {
-      if(enumerable && enumerable.moveNext()) {
-        var row = enumerable.current();
-        var idxs = [];
-        for (var i in row) {
-          idxs.push(i);
+        if (error) {
+            return callback([], error);
         }
-        callback(idxs);
-      } else {
-        callback([], error);
-      }
+        enumerable.first(function(item) {
+            var idxs = [];
+            for (var i in item) {
+                idxs.push(i);
+            }
+            callback(idxs);
+        });
     });
   },
   
@@ -76,12 +76,51 @@ var database = {
     });
   },
   
-  init: function() {
-    var build_table_def = function(name, create) {
-      var obj = {
-        "name": name,
-        "cols": {}
+  EnumerableSource: function(name, cols) {
+    this.name = name;
+    this.cols = cols;
+    this.rows = -1;
+    this.pages = {};
+
+    this.getNumRows = function() {
+      if(this.rows < 0) {
+        this.rows = 100;
+      } else {
+        return this.rows;
+      }
+    };
+    
+    this.getRow = function(index) {
+        return {i:index, n:1};
+    };
+
+    var that = this;
+    this.getEnumerator = function() {
+      return new function() {
+        var index = -1;
+        this.moveNext = function(cb) {
+          ++index;
+          cb(index < that.getNumRows());
+        };
+        this.current = function() {
+          if (index < 0 || index > that.getNumRows()) {
+            console.log('error, table access at unknown index ' + index);
+            throw new InvalidOperationException();
+          }
+          return that.getRow(index);
+        };
+        this.reset = function() {
+          index = -1;
+        }
       };
+    };
+  },
+  
+  init: function() {
+    database.EnumerableSource.prototype = jsinq.Enumerable.prototype;
+    var build_table_def = function(name, create) {
+      var obj = new database.EnumerableSource(name, {});
+
       var rows = create.split('\n');
       for (var i = 1; i < rows.length; i++) {
         if (rows[i].trim().match(/(PRIMARY KEY|UNIQUE|FOREIGN KEY)/))
@@ -89,14 +128,14 @@ var database = {
         var kv = rows[i].trim().match(/([\S]*)\s+([\S]*)/i);
         if (kv == null || kv.length < 3)
             continue;
-        obj['cols'][kv[1]] = kv[2];
+        obj.cols[kv[1]] = kv[2];
       }
 
       return obj;
     };
 
     if (database.source == null) {
-      database.source = [];
+      database.source = {};
       database.stream_table("sqlite_master", function(data) {
         if (!data['rows']) {
           database.status = data['status'];
@@ -105,7 +144,7 @@ var database = {
         for(var i = 0; i < data['rows'].length; i ++) {
           var r = data['rows'][i];
           if (r[0] == "table") {
-            database.source.push(build_table_def(r[1], r[4]));
+            database.source[r[1]] = build_table_def(r[1], r[4]);
           }
         }
       }, database.unblock);
