@@ -6,13 +6,16 @@ var compose_pane = {
   render_sqlite: function() {
     $('#compose').empty();
 
+    var tables = 0;
     if (database.source) {
       for (var i in database.source) {
+        tables++;
         var block = document.createElement("div");
         $('#compose').addClass('three-column span10 offset1').append($(block)
            .append(compose_pane.render_table(database.source[i])));
       }
-    } else {
+    }
+    if (tables == 0 || !database.source) {
       var result = document.createElement('div');
       $(result).addClass("alert")
           .html("<strong>Warning!</strong> " +
