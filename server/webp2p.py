@@ -23,7 +23,10 @@ import uuid
 
 from tornado.options import define, options
 
-define("port", default=8080, help="port", type=int)
+default_port = 8080
+if 'PORT' in os.environ:
+  default_port = os.environ['PORT']
+define("port", default=default_port, help="port", type=int)
 
 
 class Application(tornado.web.Application):
