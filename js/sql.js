@@ -183,7 +183,7 @@ var database = {
         database.stream_table(table, callback, and_then, data['range'][1]);
       }
       callback(data);
-      if (data['range'][1] >= data['total'] && and_then) {
+      if ((!data['range'] || !data['total'] || data['range'][1] >= data['total']) && and_then) {
         and_then();
       }
     });
