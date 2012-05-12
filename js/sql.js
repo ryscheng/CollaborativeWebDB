@@ -1,11 +1,12 @@
 var database = {
+  page_width: 30,
   source: null,
-  training: false,
-  blocked: [],
+  _training: false,
+  _blocked: [],
   
-  execute: function(query, callback) {
-    if (database.blocked !== false) {
-      database.blocked.push(function() {
+  execute: function(query, callback, only_train) {
+    if (database._blocked !== false) {
+      database._blocked.push(function() {
         database.execute(query, callback);
       });
       if (database.source == null)
@@ -18,29 +19,37 @@ var database = {
       if (!query.length) {
         return callback(null, "No Query");
       }
-      log.write("evaluating " + query.trim());
+      database._training = true;
+      log.write("training query");
       try {
         q = new jsinq.Query(query);
       } catch(e) {
         log.warn("error constructing query");
+        database._reset();
         callback(null, e);
         return;
       }
       try {
-        callback(q.getQueryFunction()(database.source));
+        var enumerable = q.getQueryFunction()(database.source);
+        if (only_train) {
+          callback(enumerable, null);
+        } else {
+          database._cost(query, callback, enumerable);
+        }
       } catch(e) {
         log.warn("error generating enumerator");
+        database._reset();
         callback(null, e);
       }
     }, 0);
   },
   get_schema: function(query, callback) {
-    database.training = true;
+    database._training = true;
     database.execute(query, function(enumerable, error) {
     if (error)
       console.log(error.stack);
       if (!enumerable) {
-        database.reset();
+        database._reset();
         return callback([], error);
       }
       enumerable.first(function(item) {
@@ -48,24 +57,94 @@ var database = {
         for (var i in item) {
           idxs.push(i);
         }
-        database.reset();
+        database._reset();
         callback(idxs);
         return true;
       });
-    });
+    }, true);
   },
   
-  unblock: function() {
-    var waiters = database.blocked;
-    database.blocked = false;
+  _cost: function(query, callback, enumerable) {
+    var result_cost = 0;
+    var table_cost = 0;
+    var row = 0;
+    enumerable.take(5).each(function(i) {row++});
+    if (row < 5) {
+      result_cost = 1;
+    }
+    for (var i in database.source) {
+      var t = database.source[i];
+      var indicies = 0;
+      for (var d in t.dirty) {
+        indicies++;
+      }
+      t._access_mode = indicies;
+      if (indicies > 0 && indicies <= 6) {
+        table_cost += 1;
+      } else if (indicies > 6) {
+        table_cost += 5;
+      }
+    }
+    row = 0;
+    enumerable.each(function(i) {row++});
+    if (row > 10) {
+      result_cost += 5;
+    } else {
+      result_cost += 1;
+    }
+    
+    var semaphore = 0;
+    var continuation = function() {
+      semaphore--;
+      if (semaphore == 0) {
+        // Tables loaded.
+        database._reset();
+        try {
+          var q = new jsinq.Query(query);
+          var e = q.getQueryFunction()(database.source);
+          callback(e, null);
+        } catch (err) {
+          callback(null, err);
+        }
+      }
+    }
+
+    console.log("r: " + result_cost + "t:" + table_cost);
+    if (result_cost < table_cost) {
+      // Store result only.
+      log.warn("not implemented :-/");
+    } else {
+      // Store tables.
+      for (var i in database.source) {
+        var t = database.source[i];
+
+        if (t._access_mode > 0 && t._access_mode <= 6) {
+          semaphore++;
+          console.log('page needed from ' + i);
+          database.load_page(database.get_page_key(i, 0), function(page) {
+            this.store(page);
+            continuation();
+          }.bind(t));
+        } else if (t._access_mode > 0) {
+          semaphore++;
+          console.log('full table needed from ' + i);
+          database.stream_table(i, database.source[i].store, continuation);
+        }
+      }
+    }
+  },
+  
+  _unblock: function() {
+    var waiters = database._blocked;
+    database._blocked = false;
     for (var i = 0; i < waiters.length; i++) {
       waiters[i]();
     }
   },
-  reset: function() {
-    database.training = false;
+  _reset: function() {
+    database._training = false;
     for (var t in database.source) {
-      database.source[t].dirty = false;
+      database.source[t].dirty = {};
     }
   },
 
@@ -116,17 +195,21 @@ var database = {
     this.colnames = [];
     this.rows = -1;
     this.pages = {};
-    this.page_width = 1;
-    this.dirty = false;
+    this.dirty = {};
+    
+    this.store = function(page) {
+      var key = database.get_page_key(this.name, page['range'][0]);
+      console.log('stored ' + key.hash);
+      this.pages[key.hash] = page;
+    };
 
     this.getNumRows = function() {
-      if (database.training) {
-        this.dirty = true;
+      if (database._training) {
         this.rows = 10;
       } else {
         var key = database.get_page_key(this.name, 0);
-        if (this.pages[key] && this.pages[key]['total']) {
-            this.rows = this.pages[key]['total']
+        if (this.pages[key.hash] && this.pages[key.hash]['total']) {
+            this.rows = this.pages[key.hash]['total']
         } else {
           log.warn("Unrealized table " + this.name + " queried.");
           throw new Error("Access to uninitialized table");
@@ -137,9 +220,8 @@ var database = {
     
     this.getRow = function(index) {
         var data = [];
-        if (database.training) {
-          this.dirty = true;
-          var row = {};
+        if (database._training) {
+          this.dirty[index] = 1;
           for (var i = 0; i < this.colnames.length; i++) {
             var type = this.cols[this.colnames[i]].toLowerCase();
             var val = index;
@@ -148,20 +230,19 @@ var database = {
             else if (type.indexOf("float") > -1 ) val = index + Math.random();
             data.push(val);
           }
-          return row;
         } else {
-          var page_offset = index % this.page_width;
+          var page_offset = index % database.page_width;
           var key = database.get_page_key(this.name, index - page_offset);
-          var page = this.pages[key];
+          var page = this.pages[key.hash];
           if (!page) {
-            log.warn("Unrealized access to page " + key);
+            log.warn("Unrealized access to page " + key.hash);
             throw new Error("Access to nonexistent data page");
           }
           data = page['rows'][page_offset];
         }
         var row = {};
         for (var i = 0; i < this.colnames.length; i++) {
-            row[this.colnames[i]] = this.data[i];
+            row[this.colnames[i]] = data[i];
         }
         return row;
     };
@@ -219,7 +300,7 @@ var database = {
             database.source[r[1]] = build_table_def(r[1], r[4]);
           }
         }
-      }, database.unblock);
+      }, database._unblock);
     }
   }
 };

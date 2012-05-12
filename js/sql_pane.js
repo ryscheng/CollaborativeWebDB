@@ -109,7 +109,7 @@ sql_pane.prototype.renderHead = function(data, error) {
 sql_pane.prototype.renderData = function(data, error) {
   this.tbody = document.createElement('tbody');
   if (data) {
-    data.each(function(line) {
+    data.take(database.page_width - 5).each(function(line) {
       var row = document.createElement('tr');
       for (var i in line) {
         var cell = document.createElement('td');
