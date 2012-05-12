@@ -1,3 +1,4 @@
 *.o
 *.nexe
+.*.swp
 server/data.sqlite3
