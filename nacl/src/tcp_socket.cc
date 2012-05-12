@@ -16,6 +16,7 @@ TcpSocket::~TcpSocket() {
 }
 
 bool TcpSocket::connect(const char* host, uint16_t port) {
+  instance_->log("TcpSocket::connect");
   int32_t pres = PP_OK_COMPLETIONPENDING;
   assert(!socket_);
   socket_ = new pp::TCPSocketPrivate(instance_);
@@ -24,7 +25,7 @@ bool TcpSocket::connect(const char* host, uint16_t port) {
 }
 
 void TcpSocket::onConnect(int32_t result, int32_t* pres) {
-  instance_->log("onConnect");
+  instance_->log("TcpSocket::onConnect");
 }
 
 void TcpSocket::close() {

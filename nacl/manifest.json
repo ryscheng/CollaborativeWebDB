@@ -14,7 +14,8 @@
   },
   "permissions": [
     "<all_urls>",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "experimental"
   ]
   /**
   "app": {
