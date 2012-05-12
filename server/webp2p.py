@@ -27,6 +27,7 @@ default_port = 8080
 if 'PORT' in os.environ:
   default_port = os.environ['PORT']
 define("port", default=default_port, help="port", type=int)
+define("data", default="data.sqlite3", help="database", type=str)
 
 
 class Application(tornado.web.Application):
@@ -54,8 +55,8 @@ class DataHandler(tornado.web.RequestHandler):
     pagesize = 30
 
     def initialize(self):
-        if os.path.exists('data.sqlite3'):
-            self.db = sqlite3.connect('data.sqlite3')
+        if os.path.exists(options.data):
+            self.db = sqlite3.connect(options.data)
         else:
             self.db = None
 
