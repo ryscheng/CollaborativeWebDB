@@ -10,13 +10,21 @@
   },
   "browser_action": {},
   "background": {
-    "scripts": ["js/background.js"]
+    "page": "background.html"
   },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*, https://*/*"],
+      "js": ["js/nacl_transport.js"]
+    }
+  ],
   "permissions": [
     "<all_urls>",
+    "tabs",
     "unlimitedStorage",
     "experimental"
   ]
+
   /**
   "app": {
     "urls": [

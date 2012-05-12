@@ -30,11 +30,11 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
   if (!var_message.is_string()) {
     return;
   }
-  TcpSocket* sock = new TcpSocket(this);
-  sock->connect("google.com", 80);
-  sock->close();
-  delete sock;
   this->log(kReplyStr);
+  TcpSocket* sock = new TcpSocket(this);
+  sock->connect("127.0.0.1", 80);
+  //sock->close();
+  //delete sock;
 }
 
 void NaclTransportInstance::log(char const* msg) {

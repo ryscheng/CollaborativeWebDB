@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <string.h>
 
-
+#include "pp_helper.h"
 #include "tcp_socket.h"
 
 TcpSocket::TcpSocket(NaclTransportInstance* in) 
@@ -20,7 +20,13 @@ bool TcpSocket::connect(const char* host, uint16_t port) {
   int32_t pres = PP_OK_COMPLETIONPENDING;
   assert(!socket_);
   socket_ = new pp::TCPSocketPrivate(instance_);
-  socket_->Connect(host, port, factory_.NewCallback(&TcpSocket::onConnect, &pres));
+  pres = socket_->Connect(host, port, factory_.NewCallback(&TcpSocket::onConnect, &pres));
+  instance_->log(pperrorstr(pres));
+  if (pres != PP_OK_COMPLETIONPENDING) {
+
+  } else {
+
+  }
   return true;
 }
 
@@ -29,6 +35,7 @@ void TcpSocket::onConnect(int32_t result, int32_t* pres) {
 }
 
 void TcpSocket::close() {
+  instance_->log("TcpSocket::close");
   if (socket_) {
     delete socket_;
     socket_ = NULL;

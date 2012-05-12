@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NaCl Transport Extension</title>
+</head>
+<body id="bodyid">
+<h1>Native Client Transport Module</h1>
+    <p>
+      <div id="listener">
+        <embed name="nacl_module"
+           id="nacl_transport"
+           width=0 height=0
+           src="src/nacl_transport.nmf"
+           type="application/x-nacl" />
+      </div>
+    </p>
+
+    <h2>Status</h2>
+    <div id="status_field">LOADING</div>
+    <h2>Log</h2>
+    <div id="log"></div>
+    <script language="javascript" type="text/javascript" src="js/background.js"></script>
+
+<body>
+</html>
