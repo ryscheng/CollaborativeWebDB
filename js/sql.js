@@ -188,91 +188,13 @@ var database = {
       }
     });
   },
-
-  EnumerableSource: function(name) {
-    this.name = name;
-    this.cols = {};
-    this.colnames = [];
-    this.rows = -1;
-    this.pages = {};
-    this.dirty = {};
-    
-    this.store = function(page) {
-      var key = database.get_page_key(this.name, page['range'][0]);
-      console.log('stored ' + key.hash);
-      this.pages[key.hash] = page;
-    };
-
-    this.getNumRows = function() {
-      if (database._training) {
-        this.rows = 10;
-      } else {
-        var key = database.get_page_key(this.name, 0);
-        if (this.pages[key.hash] && this.pages[key.hash]['total']) {
-            this.rows = this.pages[key.hash]['total']
-        } else {
-          log.warn("Unrealized table " + this.name + " queried.");
-          throw new Error("Access to uninitialized table");
-        }
-      }
-      return this.rows;
-    };
-    
-    this.getRow = function(index) {
-        var data = [];
-        if (database._training) {
-          this.dirty[index] = 1;
-          for (var i = 0; i < this.colnames.length; i++) {
-            var type = this.cols[this.colnames[i]].toLowerCase();
-            var val = index;
-            if (type.indexOf("char") > -1) val = String.fromCharCode(97 + index);
-            else if (type.indexOf("date") > -1) val = Date.now() - index;
-            else if (type.indexOf("float") > -1 ) val = index + Math.random();
-            data.push(val);
-          }
-        } else {
-          var page_offset = index % database.page_width;
-          var key = database.get_page_key(this.name, index - page_offset);
-          var page = this.pages[key.hash];
-          if (!page) {
-            log.warn("Unrealized access to page " + key.hash);
-            throw new Error("Access to nonexistent data page");
-          }
-          data = page['rows'][page_offset];
-        }
-        var row = {};
-        for (var i = 0; i < this.colnames.length; i++) {
-            row[this.colnames[i]] = data[i];
-        }
-        return row;
-    };
-
-    var that = this;
-    this.getEnumerator = function() {
-      return new function() {
-        var index = -1;
-        this.moveNext = function() {
-          ++index;
-          return index < that.getNumRows();
-        };
-
-        this.current = function() {
-          if (index < 0 || index > that.getNumRows()) {
-            throw new InvalidOperationException();
-          }
-          return that.getRow(index);
-        };
-        this.reset = function() {
-          index = -1;
-        };
-      };
-    };
-  },
   
   init: function() {
-    database.EnumerableSource.prototype = jsinq.Enumerable.prototype;
     var build_table_def = function(name, create) {
-      var obj = new database.EnumerableSource(name);
+      var obj = {
+      name: names,
+      cols: {},
+      };
       var rows = create.split('\n');
       for (var i = 1; i < rows.length; i++) {
         if (rows[i].trim().match(/(PRIMARY KEY|UNIQUE|FOREIGN KEY)/))

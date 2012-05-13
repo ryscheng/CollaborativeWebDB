@@ -50,10 +50,24 @@ describe_pane.prototype.createResultUI = function() {
 describe_pane.prototype.explain = function() {
   var q;
   try {
-    q = new jsinq.Query(this.query);
+    q = pegjs_sql.parse(this.query);
   } catch (e) {
     $(this.element).html('<pre>' + e + '</pre>');
     return;
   }
-    $(this.element).html('<pre>' + q.getQueryFunction() + '</pre>');  
+    $(this.element).html('<pre>' + describe_pane.recursivelyPrint(q,"") + '</pre>');  
+};
+
+describe_pane.recursivelyPrint = function(query,i) {
+  var ret = "";
+  for (var x in query) {
+    ret += i + x;
+    if (typeof query[x] != "object") {
+      ret += ": " + query[x] + "\n";
+    } else {
+      ret += ":\n";
+      ret += describe_pane.recursivelyPrint(query[x], i + "  ");
+    }
+  }
+  return ret;
 };
