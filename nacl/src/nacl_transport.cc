@@ -7,7 +7,6 @@
 #include <string.h>
 
 #include "nacl_transport.h"
-#include "tcp_socket.h"
 
 namespace {
   const char* const kLoadedStr = "LOADED";
@@ -30,17 +29,19 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
   if (!var_message.is_string()) {
     return;
   }
-  this->log(kReplyStr);
-  TcpSocket* sock = new TcpSocket(this);
-  sock->connect("127.0.0.1", 80);
+  log_->log(kReplyStr);
+  //TcpSocket* sock = new TcpSocket(this);
+  //sockets_.push_back(sock);
+  //log_->log(sockets_.size());
+  //sock->connect("127.0.0.1", 80);
   //sock->close();
   //delete sock;
+
 }
 
-void NaclTransportInstance::log(char const* msg) {
-  pp::Var var_msg = pp::Var(msg);
-  PostMessage(var_msg);
-}
+//void NaclTransportInstance::NewPeer() {
+//}
+
 
 
 //---------------------------------------------------------------------------------

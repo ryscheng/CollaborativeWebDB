@@ -6,11 +6,11 @@
 #include "ppapi/cpp/private/tcp_socket_private.h"
 
 #include "pthread_helpers.h"
-#include "nacl_transport.h"
+#include "logger.h"
 
 class TcpSocket {
   public:
-    TcpSocket(NaclTransportInstance* in);
+    TcpSocket(pp::Instance* in);
     virtual ~TcpSocket();
 
     bool connect(const char* host, uint16_t port);
@@ -18,7 +18,8 @@ class TcpSocket {
     void close();
 
   private:
-    NaclTransportInstance* instance_;
+    pp::Instance* instance_;
+    Logger* log_;
     pp::TCPSocketPrivate* socket_;
     pp::CompletionCallbackFactory<TcpSocket, ThreadSafeRefCount> factory_;
 };
