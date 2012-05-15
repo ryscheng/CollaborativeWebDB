@@ -1,4 +1,10 @@
-var bkg = chrome.extension.getBackgroundPage();
+//var bkg = chrome.extension.getBackgroundPage();
+init();
+
+function init() {
+  console.log("Content Script Init()");
+  
+}
 
 function getVersionNacl() {
 
