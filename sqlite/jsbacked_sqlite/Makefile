@@ -1,5 +1,5 @@
 # Edit for your paths
-EMSCRIPTEN=~/Dev/emscripten
+EMSCRIPTEN=/home/vagrant/src/emscripten
 EMCC=$(EMSCRIPTEN)/emcc -O2
 # -s INLINING_LIMIT=0
 CFLAGS=-DSQLITE_DISABLE_LFS -DLONGDOUBLE_TYPE=double -DSQLITE_INT64_TYPE="long long int" -DSQLITE_THREADSAFE=0

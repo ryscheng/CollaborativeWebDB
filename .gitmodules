@@ -4,6 +4,3 @@
 [submodule "npapi/firebreath"]
 	path = npapi/firebreath
 	url = git://github.com/firebreath/FireBreath.git
-[submodule "sqlite/sql.js"]
-	path = sqlite/sql.js
-	url = https://github.com/kripken/sql.js

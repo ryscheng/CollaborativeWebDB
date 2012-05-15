@@ -78,6 +78,19 @@ class emscripten {
         creates => "/home/vagrant/src/${clang_dir}",
         require => Exec["wget-clang-llvm"]
     }
+    
+    exec { "/usr/bin/git clone https://github.com/kripken/sql.js":
+        alias => "git-clone-sqljs",
+        cwd => "/home/vagrant/src",
+        require => Exec["git-pull-emscripten"],
+        creates => "/home/vagrant/src/sql.js"
+    }
+
+    exec { "/usr/bin/git pull origin master":
+        cwd => "/home/vagrant/src/sql.js",
+        alias => "git-pull-sqljs",
+        require => Exec["git-clone-sqljs"]
+    }
 }
 
 group { "puppet":
