@@ -1,8 +1,8 @@
 #include "sqlite3ext.h"
 
 static int js_version = 1;
-static (void*(*js_backing)(char*,int)) = NULL;
-static void* js_answer = NULL;
+static void (*js_backing)(char*,int) = 0;
+static void* js_answer = 0;
 static jmp_buf buf;
 
 typedef struct js_vtab_cursor {
@@ -34,10 +34,10 @@ typedef struct js_datavalue {
   char type;
   int length;
   void* value;
-}
+};
 
 static js_vtab* cursor_tab(js_vtab_cursor* c) {
-  return (js_vtab*) c->base.pVtab
+  return (js_vtab*) c->base.pVtab;
 };
 
 // create a virtual table
@@ -49,7 +49,7 @@ static int js_xCreate(sqlite3 *db, void *pAux, int argc, char **argv, sqlite3_vt
   
   // Allocate the table.
   js_vtab* table = sqlite3_malloc(sizeof(js_vtab));
-  if (table == NULL) {
+  if (table == 0) {
     *pzErr = sqlite3_mprintf("Failed to allocate table.");
     return SQLITE_NOMEM;
   }
@@ -85,7 +85,7 @@ static int js_xDisconnect(sqlite3_vtab *pVTab) {
 };
 
 // Define good table access patterns.
-static int js_xBestIndex(sqlite3_vtab *pVTab, sqlite3_index_info*) {
+static int js_xBestIndex(sqlite3_vtab *pVTab, sqlite3_index_info* info) {
   js_vtab* tab = (js_vtab*) pVTab;
   // Tasks:
   // 1. determine the estimatedCost for a given index_info.
@@ -251,9 +251,10 @@ static int jsbacked_create_module(sqlite3 *db, char **pzErrMsg, const sqlite3_ap
 };
 
 // Exported Functions.
-static void jsbacked_init((void*(*)(char*,int))callback) {
+static void jsbacked_init(void(*callback)(char*,int)) {
   js_backing = callback;
-  sqlite3_auto_extension((void(*)(void)jsbacked_create_module)
+  SQLITE_EXTENSION_INIT1;
+  sqlite3_auto_extension(jsbacked_create_module)
 };
 
 static void jsbacked_done(void* answer) {
