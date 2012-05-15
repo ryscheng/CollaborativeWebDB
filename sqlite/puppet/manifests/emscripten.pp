@@ -1,6 +1,6 @@
-$emscripten_deps = ["git-core", "openjdk-6-jdk", "nodejs"]
-$clang_dir = "clang+llvm-3.0-i386-linux-Ubuntu-11_04"
-$clang_filename = "${clang_dir}.tar.bz2"
+$emscripten_deps = ["git-core", "make", "openjdk-6-jdk", "nodejs"]
+$clang_dir = "clang+llvm-3.0-i386-linux-Ubuntu-11_10"
+$clang_filename = "${clang_dir}.tar.gz"
 $clang_url = "http://llvm.org/releases/3.0/${clang_filename}"
 
 Exec {
@@ -71,7 +71,7 @@ class emscripten {
         environment => ["PWD=/home/vagrant/src", "HOME=/home/vagrant"],
     }
 
-    exec { "/bin/tar -jxf ${clang_filename}":
+    exec { "/bin/tar -xzf ${clang_filename}":
         alias => "untar-clang-llvm",
         cwd => "/home/vagrant/src",
         environment => ["PWD=/home/vagrant/src", "HOME=/home/vagrant"],
