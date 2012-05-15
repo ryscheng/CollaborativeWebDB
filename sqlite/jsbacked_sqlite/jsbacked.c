@@ -1,5 +1,10 @@
 #include "sqlite3ext.h"
 
+#include <setjmp.h>
+#include <string.h>
+
+SQLITE_EXTENSION_INIT1
+
 static int js_version = 1;
 static void (*js_backing)(char*,int) = 0;
 static void* js_answer = 0;
@@ -34,7 +39,7 @@ typedef struct js_datavalue {
   char type;
   int length;
   void* value;
-};
+} js_datavalue;
 
 static js_vtab* cursor_tab(js_vtab_cursor* c) {
   return (js_vtab*) c->base.pVtab;
@@ -128,8 +133,8 @@ static int js_xNext(sqlite3_vtab_cursor *pCursor) {
     int i = 0;
     js_vtab_cursor *c = (js_vtab_cursor*) pCursor;
     js_vtab* tab = cursor_tab(c);
-    if (c->row != NULL) {
-      while (c->row[i] != NULL) {
+    if (c->row != 0) {
+      while (c->row[i] != 0) {
         free(c->row[i]);
         i++;
       }
@@ -141,7 +146,7 @@ static int js_xNext(sqlite3_vtab_cursor *pCursor) {
         js_backing(tab->name, c->rowid++);
     }
     c->row = js_answer;
-    if (c->row == NULL) {
+    if (c->row == 0) {
       c->eof = 1;
     }
     return SQLITE_OK;
@@ -161,7 +166,7 @@ static int js_xColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context *pContext, i
     switch(value->type) {
         case BLOB:
             void* sql_owned_blob = sqlite3_malloc(value->length);
-            if (sql_owned_blob != NULL) {
+            if (sql_owned_blob != 0) {
                 memcpy(sql_owned_blob, value->value, value->length);
                 pVal = sqlite3_result_blob(pContext, sql_owned_blob, value->length, sqlite3_free);
             } else {
@@ -169,20 +174,20 @@ static int js_xColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context *pContext, i
             }
             break;
         case DOUBLE:
-            pVal = sqlite3_result_double(pContext, (double)*value->value);
+            pVal = sqlite3_result_double(pContext, *(double*)value->value);
             break;
         case ERROR:
             pVal = sqlite3_result_error(pContext, (char*)value->value, value->length);
             break;
         case INT:
-            pVal = sqlite3_result_int(pContext, (int)*value->value);
+            pVal = sqlite3_result_int(pContext, *(int*)value->value);
             break;
         case INT64:
-            pVal = sqlite3_result_int64(pContext, (sqlite3_int64)*value->value);
+            pVal = sqlite3_result_int64(pContext, *(sqlite3_int64*)value->value);
             break;
         case TEXT:
             char* sql_owned_str = (char*)sqlite3_malloc(value->length);
-            if (sql_owned_str != NULL) {
+            if (sql_owned_str != 0) {
                 memcpy(sql_owned_str, value->value, value->length);
                 pVal = sqlite3_result_text(pContext, sql_owned_str, value->length; sqlite3_free);
             } else {
@@ -253,7 +258,6 @@ static int jsbacked_create_module(sqlite3 *db, char **pzErrMsg, const sqlite3_ap
 // Exported Functions.
 static void jsbacked_init(void(*callback)(char*,int)) {
   js_backing = callback;
-  SQLITE_EXTENSION_INIT1;
   sqlite3_auto_extension(jsbacked_create_module)
 };
 
