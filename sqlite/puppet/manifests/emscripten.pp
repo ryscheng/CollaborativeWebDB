@@ -85,12 +85,6 @@ class emscripten {
         require => Exec["git-pull-emscripten"],
         creates => "/home/vagrant/src/sql.js"
     }
-
-    exec { "/usr/bin/git pull origin master":
-        cwd => "/home/vagrant/src/sql.js",
-        alias => "git-pull-sqljs",
-        require => Exec["git-clone-sqljs"]
-    }
 }
 
 group { "puppet":
