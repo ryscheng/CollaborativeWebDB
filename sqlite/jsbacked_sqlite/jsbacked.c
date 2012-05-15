@@ -1,5 +1,6 @@
 #include "sqlite3ext.h"
 
+#include <malloc.h>
 #include <setjmp.h>
 #include <string.h>
 
@@ -14,7 +15,7 @@ typedef struct js_vtab_cursor {
   sqlite3_vtab_cursor base;
   sqlite_int64 rowid;
   int eof;
-  void* row;
+  void** row;
 } js_vtab_cursor;
 
 typedef struct js_vtab {
@@ -145,7 +146,7 @@ static int js_xNext(sqlite3_vtab_cursor *pCursor) {
     if (! setjmp(buf)) {
         js_backing(tab->name, c->rowid++);
     }
-    c->row = js_answer;
+    c->row = (void**)js_answer;
     if (c->row == 0) {
       c->eof = 1;
     }
@@ -165,7 +166,7 @@ static int js_xColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context *pContext, i
     sqlite3_value *pVal;
     switch(value->type) {
         case BLOB:
-            void* sql_owned_blob = sqlite3_malloc(value->length);
+            void *sql_owned_blob = sqlite3_malloc(value->length);
             if (sql_owned_blob != 0) {
                 memcpy(sql_owned_blob, value->value, value->length);
                 pVal = sqlite3_result_blob(pContext, sql_owned_blob, value->length, sqlite3_free);
@@ -186,10 +187,10 @@ static int js_xColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context *pContext, i
             pVal = sqlite3_result_int64(pContext, *(sqlite3_int64*)value->value);
             break;
         case TEXT:
-            char* sql_owned_str = (char*)sqlite3_malloc(value->length);
+            char *sql_owned_str = (char*)sqlite3_malloc(value->length);
             if (sql_owned_str != 0) {
                 memcpy(sql_owned_str, value->value, value->length);
-                pVal = sqlite3_result_text(pContext, sql_owned_str, value->length; sqlite3_free);
+                pVal = sqlite3_result_text(pContext, sql_owned_str, value->length, sqlite3_free);
             } else {
                 pVal = sqlite3_result_error_nomem(pContext);
             }
