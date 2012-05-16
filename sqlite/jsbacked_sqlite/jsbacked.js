@@ -13,7 +13,7 @@ Module['init'] = function(init_callback, retrieve_callback) {
         
         var cols = arr.length;
         // Allocate the pointer array.
-        var ptr = Module['allocate'](cols + 1, 'i32', Module['ALLOC_NORMAL']);
+        var ptr = Module['allocate'](cols + 1, 'i32', 0 /* alloc_normal */);
         // Insert the entries.
         for (var i = 0; i < cols; i++) {
             var type = types[i];
@@ -21,21 +21,21 @@ Module['init'] = function(init_callback, retrieve_callback) {
             var length = 0;
             if (type == 0 || type == 2 ||  type == 5) { //blob, error, text
               length = arr[i].length;
-              value = Module['allocate'](arr[i],'i8', Module['ALLOC_NORMAL']);
+              value = Module['allocate'](arr[i],'i8', 0 /* alloc_normal */);
             } else if (type == 1) { // double
               length = 8;
-              value = Module['allocate'](1, 'double', Module['ALLOC_NORMAL']);            
+              value = Module['allocate'](1, 'double', 0 /* alloc_normal */);            
               Module['setValue'](value, arr[i], 'double');
             } else if (type == 3 || type == 6) { //int, zeroblob
               length = 4;
-              value = Module['allocate'](1,'i32', Module['ALLOC_NORMAL']);
+              value = Module['allocate'](1,'i32', 0 /* alloc_normal */);
               Module['setValue'](value, arr[i], 'i32');
             } else if (type == 4) { //int64
               length = 8;
-              value = Module['allocate'](1,'i64', Module['ALLOC_NORMAL']);
+              value = Module['allocate'](1,'i64', 0 /* alloc_normal */);
               Module['setValue'](value, arr[i], 'i64');
             }
-            var struct = Module['allocate']([type, length, value], ['i32','i32','i32'], Module['ALLOC_NORMAL']);
+            var struct = Module['allocate']([type, length, value], ['i32','i32','i32'], 0 /* alloc_normal */);
             Module['setValue'](ptr + i, struct, 'i32');
         }
 

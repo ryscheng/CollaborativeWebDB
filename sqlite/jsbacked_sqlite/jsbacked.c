@@ -48,7 +48,7 @@ static js_vtab* cursor_tab(js_vtab_cursor* c) {
 };
 
 // create a virtual table
-static int js_xCreate(sqlite3 *db, void *pAux, int argc, char **argv, sqlite3_vtab **ppVTab, char **pzErr) {
+static int js_xCreate(sqlite3 *db, void *pAux, int argc, const char *const *argv, sqlite3_vtab **ppVTab, char **pzErr) {
   if (argc < 3) {
     *pzErr = sqlite3_mprintf("No table name provided.");
     return SQLITE_ERROR;
@@ -75,11 +75,13 @@ static int js_xCreate(sqlite3 *db, void *pAux, int argc, char **argv, sqlite3_vt
 
   // Declare the table to the database.
   if(sqlite3_declare_vtab(db, create_stmt) != SQLITE_OK) {
-    *pzErr = sqlite3_mprintf("Failed to declare virtual table from %d [%s].", (int)js_answer, create_stmt);
+    *pzErr = sqlite3_mprintf("Failed to declare virtual table from [%s].", create_stmt);
     sqlite3_free(table->name);
     sqlite3_free(table);
+    free(js_answer);
     return SQLITE_ERROR;
   }
+  free(js_answer);
 
   return SQLITE_OK;
 };
@@ -95,6 +97,7 @@ static int js_xDisconnect(sqlite3_vtab *pVTab) {
 // Define good table access patterns.
 static int js_xBestIndex(sqlite3_vtab *pVTab, sqlite3_index_info* info) {
   js_vtab* tab = (js_vtab*) pVTab;
+  pVTab->zErrMsg = 0;
   // Tasks:
   // 1. determine the estimatedCost for a given index_info.
   // 2. If ordering requested can be delivered, set the orderByConsumed bit.
@@ -121,7 +124,7 @@ static int js_xFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char *idxS
     js_vtab* tab = cursor_tab(c);
     c->rowid = 0;
 
-    return SQLITE_OK;
+    return js_xNext(pCursor);
 };
 
 // Close a cursor.
@@ -152,6 +155,8 @@ static int js_xNext(sqlite3_vtab_cursor *pCursor) {
     c->row = (void**)js_answer;
     if (c->row == 0) {
       c->eof = 1;
+    } else {
+      c->eof = 0;
     }
     return SQLITE_OK;
 };
