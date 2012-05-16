@@ -43,7 +43,7 @@ Module['init'] = function(init_callback, retrieve_callback) {
 
     var launchpad = FUNCTION_TABLE.length;
     FUNCTION_TABLE[launchpad] = function(table, index) {
-        var name = Pointer_stringify(getValue(table));
+        var name = Pointer_stringify(table);
         if (index < 0) {
             // Get a table's create statement.
             init_callback(name, init_springboard);
