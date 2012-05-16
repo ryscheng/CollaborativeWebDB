@@ -10,6 +10,7 @@ static int js_version = 1;
 static void (*js_backing)(char*,int) = 0;
 static void* js_answer = 0;
 static jmp_buf buf;
+static sqlite3_module js_module;
 
 typedef struct js_vtab_cursor {
   sqlite3_vtab_cursor base;
@@ -33,7 +34,7 @@ enum js_datatype {
   INT64,
   TEXT,
   ZEROBLOB,
-  NIL = 0xff
+  NIL = 0x7F
 };
 
 typedef struct js_datavalue {
@@ -163,46 +164,45 @@ static int js_xEof(sqlite3_vtab_cursor *pCursor) {
 static int js_xColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context *pContext, int idxCol) {
     js_vtab_cursor *c = (js_vtab_cursor*) pCursor;
     struct js_datavalue* value = (struct js_datavalue*)c->row[idxCol];
-    sqlite3_value *pVal;
+    void* sql_owned_data;
     switch(value->type) {
         case BLOB:
-            void *sql_owned_blob = sqlite3_malloc(value->length);
-            if (sql_owned_blob != 0) {
-                memcpy(sql_owned_blob, value->value, value->length);
-                pVal = sqlite3_result_blob(pContext, sql_owned_blob, value->length, sqlite3_free);
+            sql_owned_data = sqlite3_malloc(value->length);
+            if (sql_owned_data != 0) {
+                memcpy(sql_owned_data, value->value, value->length);
+                sqlite3_result_blob(pContext, sql_owned_data, value->length, sqlite3_free);
             } else {
-                pVal = sqlite3_result_error_nomem(pContext);
+                sqlite3_result_error_nomem(pContext);
             }
             break;
         case DOUBLE:
-            pVal = sqlite3_result_double(pContext, *(double*)value->value);
+            sqlite3_result_double(pContext, *(double*)value->value);
             break;
         case ERROR:
-            pVal = sqlite3_result_error(pContext, (char*)value->value, value->length);
+            sqlite3_result_error(pContext, (char*)value->value, value->length);
             break;
         case INT:
-            pVal = sqlite3_result_int(pContext, *(int*)value->value);
+            sqlite3_result_int(pContext, *(int*)value->value);
             break;
         case INT64:
-            pVal = sqlite3_result_int64(pContext, *(sqlite3_int64*)value->value);
+            sqlite3_result_int64(pContext, *(sqlite3_int64*)value->value);
             break;
         case TEXT:
-            char *sql_owned_str = (char*)sqlite3_malloc(value->length);
-            if (sql_owned_str != 0) {
-                memcpy(sql_owned_str, value->value, value->length);
-                pVal = sqlite3_result_text(pContext, sql_owned_str, value->length, sqlite3_free);
+            sql_owned_data = (char*)sqlite3_malloc(value->length);
+            if (sql_owned_data != 0) {
+                memcpy(sql_owned_data, value->value, value->length);
+                sqlite3_result_text(pContext, sql_owned_data, value->length, sqlite3_free);
             } else {
-                pVal = sqlite3_result_error_nomem(pContext);
+                sqlite3_result_error_nomem(pContext);
             }
             break;
         case ZEROBLOB:
-            pVal = sqlite3_result_zeroblob(pContext, value->length);
+            sqlite3_result_zeroblob(pContext, value->length);
             break;
         case NIL:
         default:
-            pVal = sqlite3_result_null(pContext);
+            sqlite3_result_null(pContext);
     }
-    sqlite3_result_value(pContext, pVal);
     return SQLITE_OK;
 };
 
@@ -218,48 +218,46 @@ static int js_rename(sqlite3_vtab *pVTab, const char *zName) {
   return SQLITE_OK;
 };
 
-
-static sqlite3_module js_module = {
-  js_version,       // iVersion
-  js_xCreate,       // xCreate
-  js_xCreate,       // xConnect
-  js_xBestIndex,    // xBestIndex
-  js_xDisconnect,   // xDisconnect
-  js_xDisconnect,   // xDestroy
-  js_xOpen,         // xOpen
-  js_xClose,        // xClose
-  js_xFilter,       // xFilter
-  js_xNext,         // xNext
-  js_xEof,          // xEof
-  js_xColumn,       // xColumn
-  js_xRowid,        // xRowid
-  NULL,             // xUpdate
-  NULL,             // xBegin
-  NULL,             // xSync
-  NULL,             // xCommit
-  NULL,             // xRollback
-  NULL,             // xFindFunction TODO: may want to implement
-  js_rename,        // Rename
-  NULL,             // xSavepoint
-  NULL,             // xRelease
-  NULL              // xRollbackTo
-};
-
 static int jsbacked_create_module(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi) {
   SQLITE_EXTENSION_INIT2(pApi);
+
+  js_module.iVersion        = js_version;
+  js_module.xCreate         = js_xCreate;
+  js_module.xConnect        = js_xCreate;
+  js_module.xBestIndex      = js_xBestIndex;
+  js_module.xDisconnect     = js_xDisconnect;
+  js_module.xDestroy        = js_xDisconnect;
+  js_module.xOpen           = js_xOpen;
+  js_module.xClose          = js_xClose;
+  js_module.xFilter         = js_xFilter;
+  js_module.xNext           = js_xNext;
+  js_module.xEof            = js_xEof;
+  js_module.xColumn         = js_xColumn;
+  js_module.xRowid          = js_xRowid;
+  js_module.xUpdate         = 0;
+  js_module.xBegin          = 0;
+  js_module.xSync           = 0;
+  js_module.xCommit         = 0;
+  js_module.xRollback       = 0;
+  js_module.xFindFunction   = 0; //TODO: this could be smarter.
+  js_module.Rename          = js_rename;
+  js_module.xSavepoint      = 0;
+  js_module.xRelease        = 0;
+  js_module.xRollbackTo     = 0;
+
   *pzErrMsg = NULL;
   sqlite3_create_module(
     db,
     "jsbacked",
-    js_module,
-    null);
+    &js_module,
+    0);
   return SQLITE_OK;
 };
 
 // Exported Functions.
 static void jsbacked_init(void(*callback)(char*,int)) {
   js_backing = callback;
-  sqlite3_auto_extension(jsbacked_create_module)
+  sqlite3_auto_extension(jsbacked_create_module);
 };
 
 static void jsbacked_done(void* answer) {
