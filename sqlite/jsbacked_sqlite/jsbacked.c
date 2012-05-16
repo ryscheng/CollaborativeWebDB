@@ -118,15 +118,6 @@ static int js_xOpen(sqlite3_vtab *pVTab, sqlite3_vtab_cursor **ppCursor) {
   }
 };
 
-// Filter a cursor.
-static int js_xFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char *idxStr, int argc, sqlite3_value **argv) {
-    js_vtab_cursor *c = (js_vtab_cursor*) pCursor;
-    js_vtab* tab = cursor_tab(c);
-    c->rowid = 0;
-
-    return js_xNext(pCursor);
-};
-
 // Close a cursor.
 static int js_xClose(sqlite3_vtab_cursor *pCursor) {
     js_vtab_cursor *c = (js_vtab_cursor*) pCursor;
@@ -159,6 +150,15 @@ static int js_xNext(sqlite3_vtab_cursor *pCursor) {
       c->eof = 0;
     }
     return SQLITE_OK;
+};
+
+// Filter a cursor.
+static int js_xFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char *idxStr, int argc, sqlite3_value **argv) {
+    js_vtab_cursor *c = (js_vtab_cursor*) pCursor;
+    js_vtab* tab = cursor_tab(c);
+    c->rowid = 0;
+
+    return js_xNext(pCursor);
 };
 
 // End of cursor check.
