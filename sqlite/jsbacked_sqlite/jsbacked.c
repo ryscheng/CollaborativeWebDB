@@ -75,7 +75,7 @@ static int js_xCreate(sqlite3 *db, void *pAux, int argc, char **argv, sqlite3_vt
 
   // Declare the table to the database.
   if(sqlite3_declare_vtab(db, create_stmt) != SQLITE_OK) {
-    *pzErr = sqlite3_mprintf("Failed to declare table.");
+    *pzErr = sqlite3_mprintf("Failed to declare virtual table [%s],", create_stmt);
     sqlite3_free(table->name);
     sqlite3_free(table);
     return SQLITE_ERROR;
