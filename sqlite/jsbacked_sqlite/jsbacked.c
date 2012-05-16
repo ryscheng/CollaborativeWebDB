@@ -257,13 +257,13 @@ static int jsbacked_create_module(sqlite3 *db, char **pzErrMsg, const sqlite3_ap
 };
 
 // Exported Functions.
-static int jsbacked_init(void(*callback)(char*,int)) {
+static __attribute__((used)) int jsbacked_init(void(*callback)(char*,int)) {
   js_backing = callback;
   sqlite3_auto_extension(jsbacked_create_module);
   return SQLITE_OK;
 };
 
-static int jsbacked_done(void* answer) {
+static __attribute__((used)) int jsbacked_done(void* answer) {
   js_answer = answer;
   longjmp(buf, 1);
   return SQLITE_ERROR;
