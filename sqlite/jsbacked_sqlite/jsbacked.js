@@ -1,6 +1,7 @@
 Module['init'] = function(init_callback, retrieve_callback) {
     function init_springboard(stmt) {
-        var ptr = Module['allocate'](stmt, 'i8', Module['ALLOC_NORMAL']);
+        var ptr = allocate(stmt, 'i8', Module['ALLOC_NORMAL']);
+        console.log("allocated '" + stmt + "' to " + ptr);
         Module['ccall']('jsbacked_done','number', ['number'], [ptr]);
     };
 
