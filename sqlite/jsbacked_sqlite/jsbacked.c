@@ -38,7 +38,7 @@ enum js_datatype {
 };
 
 typedef struct js_datavalue {
-  char type;
+  int type;
   int length;
   void* value;
 } js_datavalue;
@@ -80,6 +80,7 @@ static int js_xCreate(sqlite3 *db, void *pAux, int argc, char **argv, sqlite3_vt
     sqlite3_free(table);
     return SQLITE_ERROR;
   }
+
   return SQLITE_OK;
 };
 
@@ -137,6 +138,7 @@ static int js_xNext(sqlite3_vtab_cursor *pCursor) {
     js_vtab* tab = cursor_tab(c);
     if (c->row != 0) {
       while (c->row[i] != 0) {
+        free(((struct js_datavalue*)c->row[i])->value);
         free(c->row[i]);
         i++;
       }
@@ -214,7 +216,7 @@ static int js_xRowid(sqlite3_vtab_cursor *pCursor, sqlite_int64 *pRowid) {
 };
 
 // Rename.
-static int js_rename(sqlite3_vtab *pVTab, const char *zName) {
+static int js_xRename(sqlite3_vtab *pVTab, const char *zName) {
   return SQLITE_OK;
 };
 
@@ -240,7 +242,7 @@ static int jsbacked_create_module(sqlite3 *db, char **pzErrMsg, const sqlite3_ap
   js_module.xCommit         = 0;
   js_module.xRollback       = 0;
   js_module.xFindFunction   = 0; //TODO: this could be smarter.
-  js_module.Rename          = js_rename;
+  js_module.xRename         = js_xRename;
   js_module.xSavepoint      = 0;
   js_module.xRelease        = 0;
   js_module.xRollbackTo     = 0;
@@ -255,12 +257,14 @@ static int jsbacked_create_module(sqlite3 *db, char **pzErrMsg, const sqlite3_ap
 };
 
 // Exported Functions.
-static void jsbacked_init(void(*callback)(char*,int)) {
+static int jsbacked_init(void(*callback)(char*,int)) {
   js_backing = callback;
   sqlite3_auto_extension(jsbacked_create_module);
+  return SQLITE_OK;
 };
 
-static void jsbacked_done(void* answer) {
+static int jsbacked_done(void* answer) {
   js_answer = answer;
   longjmp(buf, 1);
+  return SQLITE_ERROR;
 };
