@@ -38,6 +38,7 @@ Module['init'] = function(init_callback, retrieve_callback) {
             var struct = Module['allocate']([type, length, value], ['i32','i32','i32'], 0 /* alloc_normal */);
             Module['setValue'](ptr + i, struct, 'i32');
         }
+        Module['setValue'](ptr + cols, 0, 'i32');
 
         Module['ccall']('jsbacked_done','number', ['number'], [ptr]);
     };
