@@ -15,7 +15,7 @@ sql.js: sqlite3.c jsbacked.c postscript.js
 	$(EMCC) $(CFLAGS) sqlite3.c jsbacked.c main.c -o sql.js $(SQLFLAGS)
 
 sql-dbg.js: sqlite3.c jsbacked.c postscript.js
-	$(EMCCDB) $(CFLAGS) sqlite3.c jsbacked.c main.c -o sql-dbg.js (SQLFLAGS)
+	$(EMCCDB) $(CFLAGS) sqlite3.c jsbacked.c main.c -o sql-dbg.js $(SQLFLAGS)
 
 clean:
 	rm sql.js sql-dbg.js postscript.js
