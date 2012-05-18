@@ -12,7 +12,7 @@ Module['init'] = function(init_callback, retrieve_callback) {
         
         var cols = arr.length;
         // Allocate the pointer array.
-        var ptr = Module['allocate'](cols + 1, 'i32', 0 /* alloc_normal */);
+        var ptr = Module['allocate'](4*(cols + 1), 'i32', 0 /* alloc_normal */);
         console.log('allocating row array of length ' + (cols+1));
         // Insert the entries.
         for (var i = 0; i < cols; i++) {
@@ -35,11 +35,14 @@ Module['init'] = function(init_callback, retrieve_callback) {
               value = Module['allocate'](1,'i64', 0 /* alloc_normal */);
               Module['setValue'](value, arr[i], 'i64');
             }
-            var struct = Module['allocate']([type, length, value], ['i32','i32','i32'], 0 /* alloc_normal */);
-            Module['setValue'](ptr + i, struct, 'i32');
+            var struct = Module['allocate'](12, 'i32', 0 /* alloc_normal */);
+            setValue(struct,type,'i32');
+            setValue(struct+4,length,'i32');
+            setValue(struct+8,value,'i32');
+            Module['setValue'](ptr + 4*i, struct, 'i32');
             console.log('Set value of row + ' + i + " to " + struct);
         }
-        Module['setValue'](ptr + cols, 0, 'i32');
+        Module['setValue'](ptr + 4*cols, 0, 'i32');
         console.log('set value of row + ' + cols + ' to zero');
 
         Module['ccall']('jsbacked_done','number', ['number'], [ptr]);
