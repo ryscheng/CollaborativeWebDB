@@ -60,7 +60,7 @@ static int jsbacked_call(char* name, int idx) {
     return SQLITE_OK;
   }
   // Otherwise, this is an unrolling of stack which we can ignore.
-  exit(0);
+  return -1;
 };
 
 // create a virtual table
@@ -154,7 +154,7 @@ static int js_xNext(sqlite3_vtab_cursor *pCursor) {
     }
 
     // Launchpad to Javascript.  js_backing must call js_done to yield control.
-    jsbacked_call(table->name, c->rowid++);
+    jsbacked_call(tab->name, c->rowid++);
     c->row = (void**)js_answer;
     if (c->row == 0) {
       c->eof = 1;
