@@ -52,10 +52,11 @@ static int jsbacked_call(char* name, int idx) {
   if (! setjmp(buf)) {
     js_backing(name, idx);
   } else {
+    // Longjump back.
     js_returns++;
   }
 
-  if(js_returns > 0)
+  if (js_returns > 0) {
     js_returns--;
     return SQLITE_OK;
   }
