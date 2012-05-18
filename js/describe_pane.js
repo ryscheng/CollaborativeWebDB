@@ -1,37 +1,46 @@
 var describe_pane = function(query) {
-  return this.newInstance(query);
+  if (query.trim().toLowerCase().indexOf("explain ") === 0) {
+    this.query = query;
+  } else {
+    this.query = "explain " + query;
+  }
+  this.id = describe_pane.counter++;
+  this.beginQuery();
+
+  return this;
 }
+
 describe_pane.panes = [];
+describe_pane.counter = 1;
 describe_pane.init = function() {
+  $("#queryform").submit(function(e) {
+    e.preventDefault();
+    return false;
+  });
   $("#describer").click(function(e) {
     describe_pane.panes.push(new describe_pane($("#querybox").val()));
     return false;
   });
 };
 
-describe_pane.counter = 1;
-describe_pane.prototype.newInstance = function(query) {
-  var instance = {
-    query: query,
-    id:describe_pane.counter++
-  };
-
-  this.createResultUI.bind(instance).call();
-  this.explain.bind(instance).call();  
-  return instance;
+describe_pane.prototype.beginQuery = function() {
+  this.createResultUI();
+  database.execute(this.query, this.renderData.bind(this));
 };
+
 
 describe_pane.prototype.createResultUI = function() {
   var title = document.createElement("a");
-  $(title).attr('href','#describe_' + this.id).attr('data-toggle','tab')
-      .html("Plan ");
+  $(title).attr('href','#desc_' + this.id).attr('data-toggle','tab')
+      .html("Description ");
   var tab = document.createElement("li");
   $(tab).append(title);
   $("#results>ul").append(tab);
 
   this.element = document.createElement("div");
-  $(this.element).addClass("tab-pane").attr('id','describe_' + this.id)
-      .html(sql_pane.progressBar_("offset4 span4", 25));
+  $(this.element).addClass("tab-pane").attr('id','desc_' + this.id)
+      .html("<div class='offset4 span4 progress progress-striped active'>" +
+      "<div class='bar' style='width: 25%;'></div></div>");
   $("#results>.tab-content").append(this.element);
 
   var that = this;
@@ -47,27 +56,23 @@ describe_pane.prototype.createResultUI = function() {
   $(title).append(closer).tab('show');
 };
 
-describe_pane.prototype.explain = function() {
-  var q;
-  try {
-    q = pegjs_sql.parse(this.query);
-  } catch (e) {
-    $(this.element).html('<pre>' + e + '</pre>');
-    return;
+describe_pane.prototype.renderData = function(data, error) {
+  if (!this.results) {
+    this.results = document.createElement('pre');
+    this.element.innerHTML = "";
+    this.element.appendChild(this.results);
   }
-    $(this.element).html('<pre>' + describe_pane.recursivelyPrint(q,"") + '</pre>');  
-};
-
-describe_pane.recursivelyPrint = function(query,i) {
-  var ret = "";
-  for (var x in query) {
-    ret += i + x;
-    if (typeof query[x] != "object") {
-      ret += ": " + query[x] + "\n";
+  if (data) {
+    var d = document.createElement("span");
+    var n = "";
+    if (typeof data == "string") {
+      n = data;
     } else {
-      ret += ":\n";
-      ret += describe_pane.recursivelyPrint(query[x], i + "  ");
+      for (var i in data) {
+        n += i + ":" + data[i] + "\n";
+      }
     }
+    d.innerHTML = n;
+    this.results.appendChild(d);
   }
-  return ret;
 };

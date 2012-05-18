@@ -99,16 +99,13 @@ sql_pane.prototype.renderData = function(data, error) {
     this.tbody = document.createElement('tbody');
   }
   if (data) {
+    var row = document.createElement('tr');
     for (var r = 0; r < data.length; r++) {
-      line = data[r];
-      var row = document.createElement('tr');
-      for (var i in line) {
-        var cell = document.createElement('td');
-        cell.innerHTML = line[i].value;
-        row.appendChild(cell);
-      }
-      this.tbody.appendChild(row);
+      var cell = document.createElement('td');
+      cell.innerHTML = data[r].value;
+      row.appendChild(cell);
     }
+    this.tbody.appendChild(row);
   } else {
     var row = document.createElement('tr');
     var cell = document.createElement('td');

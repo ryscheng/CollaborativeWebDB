@@ -105,7 +105,18 @@ var database = {
     */
   },
   
-  _unblock: function() {
+  _finishSetup: function() {
+    var setup = "";
+    for (var table in database.source) {
+      setup += "create virtual table " + database.source[table].name +
+          " using jsbacked;";
+    }
+    database.handle.exec(setup, database._unblock);
+  },
+  _unblock: function(a,b) {
+    console.log('unblock 1st arg' + a);
+    console.log('unblock 2nd arg' + b);
+    log.write("Database Initialized.");
     var waiters = database._blocked;
     database._blocked = false;
     for (var i = 0; i < waiters.length; i++) {
@@ -219,9 +230,11 @@ var database = {
     var get_table_def = function(name, callback) {
       var table = database.source[name];
       if (!table) {
+        console.log ("whoops, couldn't find " + name);
         return callback(0);
       }
-      return table.def;
+      console.log ("returning " + table.def + " for " + name);
+      return callback(table.def);
     };
     
     var get_table_row = function(name, idx, callback) {
@@ -273,7 +286,7 @@ var database = {
             database.source[r[1]] = build_table_def(r[1], r[4]);
           }
         }
-      }, database._unblock);
+      }, database._finishSetup);
     }
   }
 };

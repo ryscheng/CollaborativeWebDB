@@ -81,8 +81,9 @@ static int js_xCreate(sqlite3 *db, void *pAux, int argc, const char *const *argv
   table->db = db;
 
   int len = strlen(argv[2]);
-  table->name = sqlite3_malloc(len);
+  table->name = sqlite3_malloc(len + 1);
   memcpy(table->name, argv[2], len);
+  table->name[len] = 0;
 
   // Launchpad to Javascript.  js_backing must call js_done to yield control.
   jsbacked_call(table->name, -1);
