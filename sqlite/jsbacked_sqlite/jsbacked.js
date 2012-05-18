@@ -1,12 +1,12 @@
 Module['init'] = function(init_callback, retrieve_callback) {
     function init_springboard(stmt) {
         var ptr = allocate(intArrayFromString(stmt), 'i8', 0 /* alloc_normal */);
-        Module['ccall']('jsbacked_done','number', ['number'], [ptr]);
+        Module['ccall']('jsbacked_done','number', ['number','number'], [ptr,0]);
     };
 
-    function get_springboard(types, arr) {
+    function get_springboard(types, arr, will_return_sync) {
         if (arr === 0) { // end of table.
-          Module['ccall']('jsbacked_done','number', ['number'], [0]);
+          Module['ccall']('jsbacked_done','number', ['number','number'], [0,0]);
           return;
         }
         
@@ -42,7 +42,8 @@ Module['init'] = function(init_callback, retrieve_callback) {
         }
         Module['setValue'](ptr + 4*cols, 0, 'i32');
 
-        Module['ccall']('jsbacked_done','number', ['number'], [ptr]);
+        Module['ccall']('jsbacked_done','number', ['number','number'], [ptr, will_return_sync || 0]);
+        return 0;
     };
 
     var launchpad = FUNCTION_TABLE.length;

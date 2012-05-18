@@ -1,6 +1,7 @@
 var database = {
   page_width: 30,
   source: null,
+  handle: null,
   _training: false,
   _blocked: [],
   
@@ -15,56 +16,42 @@ var database = {
     }
 
     window.setTimeout(function() {
-      var q;
       if (!query.length) {
         return callback(null, "No Query");
       }
       database._training = true;
       log.write("training query");
       try {
-        q = new jsinq.Query(query);
+        database.handle.exec(query, database._cost.bind(this, query, callback, only_train));
       } catch(e) {
         log.warn("error constructing query");
         database._reset();
         callback(null, e);
         return;
       }
-      try {
-        var enumerable = q.getQueryFunction()(database.source);
-        if (only_train) {
-          callback(enumerable, null);
-        } else {
-          database._cost(query, callback, enumerable);
-        }
-      } catch(e) {
-        log.warn("error generating enumerator");
-        database._reset();
-        callback(null, e);
-      }
     }, 0);
   },
   get_schema: function(query, callback) {
     database._training = true;
-    database.execute(query, function(enumerable, error) {
-    if (error)
-      console.log(error.stack);
-      if (!enumerable) {
+    database.execute(query, function(answer, error) {
+      if (error)
+        console.log(error.stack);
+      if (!answer) {
         database._reset();
         return callback([], error);
       }
-      enumerable.first(function(item) {
-        var idxs = [];
-        for (var i in item) {
-          idxs.push(i);
-        }
-        database._reset();
-        callback(idxs);
-        return true;
-      });
+      var idxs=[];
+      for(var i = 0; i < answer[0].length; i++) {
+        idxs.push(answers[0][i].column);
+      }
+      database._reset();
+      callback(idxs);
     }, true);
   },
   
-  _cost: function(query, callback, enumerable) {
+  _cost: function(query, callback, only_train, answer) {
+    callback(answer, null);
+  /*
     var result_cost = 0;
     var table_cost = 0;
     var row = 0;
@@ -132,6 +119,7 @@ var database = {
         }
       }
     }
+    */
   },
   
   _unblock: function() {
@@ -189,11 +177,26 @@ var database = {
     });
   },
   
+  types: {
+    BLOB: 0,
+    DOUBLE: 1,
+    ERROR: 2,
+    INT: 3,
+    INT64: 4,
+    TEXT: 5,
+    ZEROBLOB: 6,
+    NIL: 0x7f
+  },
+  
   init: function() {
     var build_table_def = function(name, create) {
       var obj = {
-      name: names,
-      cols: {},
+        name: name,
+        cols: {},
+        colnames: [],
+        types: [],
+        def: create,
+        pages: {}
       };
       var rows = create.split('\n');
       for (var i = 1; i < rows.length; i++) {
@@ -204,10 +207,75 @@ var database = {
             continue;
         obj.colnames.push(kv[1]);
         obj.cols[kv[1]] = kv[2];
+        var type = database.types.INT;
+        switch(kv[2].toLowerCase().substr(0,3)) {
+          case "int":
+          case "dat": //date
+          case "boo": //bolean
+          case "tim": //timestamp
+              break;
+          case "cha": //char
+          case "var": //varchar
+          case "nva": //nvarchar
+          case "tex": //text
+          case "clo": //clob
+              type = database.types.TEXT;
+              break;
+          case "flo": //float
+          case "num": //numeric
+              break;
+              type = database.types.DOUBLE;
+          case "blo": //blob
+              type = database.types.BLOB;
+        }
+        obj.types.push(type);
       }
-
       return obj;
     };
+    
+    var get_table_def = function(name, callback) {
+      var table = database.source[name];
+      if (!table) {
+        return callback(0);
+      }
+      return table.def;
+    };
+    
+    var get_table_row = function(name, idx, callback) {
+        var table = database.source[name];
+        if (!table) {
+          return callback([], 0);
+        }
+        
+        if (database._training || true) {
+          if (idx >= 10) {
+            return callback([], 0);
+          }
+          var row = [];
+          for (var i = 0; i < table.types.length; i++) {
+            if (table.types[i] == database.types.INT) {
+              row.push(idx);
+            } else if (table.types[i] == database.types.TEXT) {
+              row.push("Example " + idx);
+            } else if (table.types[i] == database.types.DOUBLE) {
+              row.push(idx + Math.random());
+            } else if (table.types[i] == database.types.BLOB) {
+              row.push("Binary Example " + idx);
+            } else {
+              row.push(0);
+            }
+          }
+          return callback(table.types, row, 1 /* will return sync */);
+        } else {
+          //TODO
+          return;
+        }
+    };
+    
+    if (database.handle == null) {
+        window.SQL.init(get_table_def, get_table_row);
+        database.handle = window.SQL.open();
+    }
 
     if (database.source == null) {
       database.source = {};

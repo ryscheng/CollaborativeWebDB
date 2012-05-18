@@ -11,6 +11,7 @@ static void (*js_backing)(char*,int) = 0;
 static void* js_answer = 0;
 static jmp_buf buf;
 static sqlite3_module js_module;
+static int js_returns = 0;
 
 typedef struct js_vtab_cursor {
   sqlite3_vtab_cursor base;
@@ -47,6 +48,21 @@ static js_vtab* cursor_tab(js_vtab_cursor* c) {
   return (js_vtab*) c->base.pVtab;
 };
 
+static int jsbacked_call(char* name, int idx) {
+  if (! setjmp(buf)) {
+    js_backing(name, idx);
+  } else {
+    js_returns++;
+  }
+
+  if(js_returns > 0)
+    js_returns--;
+    return SQLITE_OK;
+  }
+  // Otherwise, this is an unrolling of stack which we can ignore.
+  exit(0);
+};
+
 // create a virtual table
 static int js_xCreate(sqlite3 *db, void *pAux, int argc, const char *const *argv, sqlite3_vtab **ppVTab, char **pzErr) {
   if (argc < 3) {
@@ -68,9 +84,7 @@ static int js_xCreate(sqlite3 *db, void *pAux, int argc, const char *const *argv
   memcpy(table->name, argv[2], len);
 
   // Launchpad to Javascript.  js_backing must call js_done to yield control.
-  if (! setjmp(buf)) {
-    js_backing(table->name, -1);
-  }
+  jsbacked_call(table->name, -1);
   char* create_stmt = (char*)js_answer;
 
   // Declare the table to the database.
@@ -140,9 +154,7 @@ static int js_xNext(sqlite3_vtab_cursor *pCursor) {
     }
 
     // Launchpad to Javascript.  js_backing must call js_done to yield control.
-    if (! setjmp(buf)) {
-        js_backing(tab->name, c->rowid++);
-    }
+    jsbacked_call(table->name, c->rowid++);
     c->row = (void**)js_answer;
     if (c->row == 0) {
       c->eof = 1;
@@ -268,8 +280,13 @@ static __attribute__((used)) int jsbacked_init(void(*callback)(char*,int)) {
   return SQLITE_OK;
 };
 
-static __attribute__((used)) int jsbacked_done(void* answer) {
+static __attribute__((used)) int jsbacked_done(void* answer, int sync_flow) {
   js_answer = answer;
-  longjmp(buf, 1);
-  return SQLITE_ERROR;
+  if (!sync_flow) {
+    longjmp(buf, 1);
+    return SQLITE_ERROR;
+  } else {
+    js_returns++;
+    return SQLITE_OK;
+  }
 };
