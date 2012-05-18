@@ -31,23 +31,6 @@ var database = {
       }
     }, 0);
   },
-  get_schema: function(query, callback) {
-    database._training = true;
-    database.execute(query, function(answer, error) {
-      if (error)
-        console.log(error.stack);
-      if (!answer) {
-        database._reset();
-        return callback([], error);
-      }
-      var idxs=[];
-      for(var i = 0; i < answer[0].length; i++) {
-        idxs.push(answers[0][i].column);
-      }
-      database._reset();
-      callback(idxs);
-    }, true);
-  },
   
   _cost: function(query, callback, only_train, answer) {
     callback(answer, null);
