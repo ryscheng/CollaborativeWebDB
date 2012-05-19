@@ -19,7 +19,8 @@ function ContentScriptConnection(port) {
   }
 
   this.onMessage = function(msg) {
-    console.log("MSG:"+port.name+"::"+msg);
+    console.log("MSG from "+port.name);
+    console.log(msg);
     if (msg.command == COMMANDS.create) {
       chrome.experimental.socket.create(msg.type, msg.address, msg.port, function(socketInfo) {
         port.postMessage({command: msg.command, socketInfo: socketInfo});
@@ -47,8 +48,6 @@ function ContentScriptConnection(port) {
 
 function onContentScriptConnect(port) {
   console.log("New Content script: " + port.name);
-  if (!contentScripts.hasOwnProperty(port.name)){
-    contentScripts[port.name] = new ContentScriptConnection(port);
-    port.onMessage.addListener(contentScripts[port.name].onMessage);
-  }
+  contentScripts[port.name] = new ContentScriptConnection(port);
+  port.onMessage.addListener(contentScripts[port.name].onMessage);
 }
