@@ -34,6 +34,7 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r"/", MainHandler),
+            (r"/data.html", SubHandler),
             (r"/message", MessageHandler),
             (r"/data", DataHandler)
         ]
@@ -50,6 +51,11 @@ class Application(tornado.web.Application):
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.render("index.html")
+
+class SubHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render("data.html")
+
 
 class DataHandler(tornado.web.RequestHandler):
     pagesize = 30

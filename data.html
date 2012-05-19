@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script type="text/javascript">
+        /*
+         * This weirdness allows us to handle loading both from
+         * the filesystem, and through the tornado parser.
+         */
+        function getUrl(str) {
+          if (str.indexOf("{" + "{") != 0) return str;
+          return str.match(/\"(.*)\"/)[1];
+        }
+        var scripts = ['{{ static_url("js/db_worker.js") }}',
+            '{{ static_url("js/sql.js") }}',
+            '{{ static_url("js/sqlite.js") }}'];
+        for (var i = 0; i < scripts.length; i++) {
+          var url = getUrl(scripts[i]);
+          document.write('<script type="text/javascript" src="' + url + '">');
+          document.write('<' + '/script>');
+        }
+    </script>
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+</html>

@@ -111,7 +111,7 @@ var node = {
     network_pane.saw_node(id);
     if (!this.full()) {
       // todo: true channel setup integration.
-      var pc = new webkitDeprecatedPeerConnection("STUN stun.l.google.com:19302", this.send_.bind(this, id));
+      var pc = new webkitPeerConnection00("STUN stun.l.google.com:19302", this.send_.bind(this, id));
       this.edges[id] = pc;
     }
   },

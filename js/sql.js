@@ -1,6 +1,7 @@
 var database = {
   page_width: 30,
   source: null,
+  handle: null,
   _training: false,
   _blocked: [],
   
@@ -11,60 +12,25 @@ var database = {
       });
       if (database.source == null)
         database.init();
-      return;
+      return 0;
     }
 
-    window.setTimeout(function() {
-      var q;
-      if (!query.length) {
-        return callback(null, "No Query");
-      }
-      database._training = true;
-      log.write("training query");
-      try {
-        q = new jsinq.Query(query);
-      } catch(e) {
-        log.warn("error constructing query");
-        database._reset();
-        callback(null, e);
-        return;
-      }
-      try {
-        var enumerable = q.getQueryFunction()(database.source);
-        if (only_train) {
-          callback(enumerable, null);
-        } else {
-          database._cost(query, callback, enumerable);
-        }
-      } catch(e) {
-        log.warn("error generating enumerator");
-        database._reset();
-        callback(null, e);
-      }
-    }, 0);
-  },
-  get_schema: function(query, callback) {
+    if (!query.length) {
+      return callback(null, "No Query");
+    }
     database._training = true;
-    database.execute(query, function(enumerable, error) {
-    if (error)
-      console.log(error.stack);
-      if (!enumerable) {
-        database._reset();
-        return callback([], error);
-      }
-      enumerable.first(function(item) {
-        var idxs = [];
-        for (var i in item) {
-          idxs.push(i);
-        }
-        database._reset();
-        callback(idxs);
-        return true;
-      });
-    }, true);
+    try {
+      return database.handle.exec(query, database._cost.bind(this, query, callback, only_train));
+    } catch(e) {
+      database._reset();
+      callback(null, e);
+      return;
+    }
   },
   
-  _cost: function(query, callback, enumerable) {
+  _cost: function(query, callback, only_train, answer) {
+    callback(answer, null);
+  /*
     var result_cost = 0;
     var table_cost = 0;
     var row = 0;
@@ -132,9 +98,20 @@ var database = {
         }
       }
     }
+    */
   },
   
+  _finishSetup: function() {
+    var setup = "";
+    for (var table in database.source) {
+      setup += "create virtual table " + database.source[table].name +
+          " using jsbacked;";
+    }
+    database.handle.exec(setup, database._unblock);
+    database._unblock();
+  },
   _unblock: function() {
+    sendMessage({'m':'stat', 'r':'Database Initialized'});
     var waiters = database._blocked;
     database._blocked = false;
     for (var i = 0; i < waiters.length; i++) {
@@ -159,20 +136,50 @@ var database = {
         return callback();
     }
 
-    server.lookup(key.hash, function(peers) {
-        if (!peers.length) {
+    //server.lookup(key.hash, function(peers) {
+    //    if (!peers.length) {
             database.load_from_server(key, callback);
-        } else {
-            console.log('would get from peers');
+    //    } else {
+    //        console.log('would get from peers');
+    //    }
+    //});
+  },
+  
+  ajax: {
+        Version: '1.0.0',
+	
+		request: function(sync,callback,url)
+		{
+		       var r=(XMLHttpRequest)?new XMLHttpRequest:new ActiveXObject("Microsoft.XMLHTTP");
+		       if(!r) {return false;}
+		       if(!sync) {
+		               r.onreadystatechange = function() {callback(r);};
+		       }
+		       r.open("GET", url, !sync);
+	           r.send(null);
+	           if(!sync) {return true;}
+               
+	           if(r.responseText) {
+	                   return r.responseText;
+	           }
+	           return "Failed To Load";
+	    },
+        synchronous: function(url) {
+                return database.ajax.request(true,false,url);
+        },
+        asynchronous: function(url,callback) {
+                database.ajax.request(false,callback,url);
+                return true;
         }
-    });
   },
 
   load_from_server: function(key, callback) {
-    $.ajax({
-      url: "/data",
-      data: { t: key['table'], o: key['offset'] }
-    }).done(callback);
+    database.ajax.asynchronous("/data?t="+key['table']+"&o="+key['offset'], function(r) {
+      if (r.readyState == 4) {
+        var actual_data = JSON.parse(r.responseText);
+        callback(actual_data);
+      }
+    });
   },
   
   stream_table: function(table, callback, and_then, offset) {
@@ -188,91 +195,28 @@ var database = {
       }
     });
   },
-
-  EnumerableSource: function(name) {
-    this.name = name;
-    this.cols = {};
-    this.colnames = [];
-    this.rows = -1;
-    this.pages = {};
-    this.dirty = {};
-    
-    this.store = function(page) {
-      var key = database.get_page_key(this.name, page['range'][0]);
-      console.log('stored ' + key.hash);
-      this.pages[key.hash] = page;
-    };
-
-    this.getNumRows = function() {
-      if (database._training) {
-        this.rows = 10;
-      } else {
-        var key = database.get_page_key(this.name, 0);
-        if (this.pages[key.hash] && this.pages[key.hash]['total']) {
-            this.rows = this.pages[key.hash]['total']
-        } else {
-          log.warn("Unrealized table " + this.name + " queried.");
-          throw new Error("Access to uninitialized table");
-        }
-      }
-      return this.rows;
-    };
-    
-    this.getRow = function(index) {
-        var data = [];
-        if (database._training) {
-          this.dirty[index] = 1;
-          for (var i = 0; i < this.colnames.length; i++) {
-            var type = this.cols[this.colnames[i]].toLowerCase();
-            var val = index;
-            if (type.indexOf("char") > -1) val = String.fromCharCode(97 + index);
-            else if (type.indexOf("date") > -1) val = Date.now() - index;
-            else if (type.indexOf("float") > -1 ) val = index + Math.random();
-            data.push(val);
-          }
-        } else {
-          var page_offset = index % database.page_width;
-          var key = database.get_page_key(this.name, index - page_offset);
-          var page = this.pages[key.hash];
-          if (!page) {
-            log.warn("Unrealized access to page " + key.hash);
-            throw new Error("Access to nonexistent data page");
-          }
-          data = page['rows'][page_offset];
-        }
-        var row = {};
-        for (var i = 0; i < this.colnames.length; i++) {
-            row[this.colnames[i]] = data[i];
-        }
-        return row;
-    };
-
-    var that = this;
-    this.getEnumerator = function() {
-      return new function() {
-        var index = -1;
-        this.moveNext = function() {
-          ++index;
-          return index < that.getNumRows();
-        };
-
-        this.current = function() {
-          if (index < 0 || index > that.getNumRows()) {
-            throw new InvalidOperationException();
-          }
-          return that.getRow(index);
-        };
-        this.reset = function() {
-          index = -1;
-        };
-      };
-    };
+  
+  types: {
+    BLOB: 0,
+    DOUBLE: 1,
+    ERROR: 2,
+    INT: 3,
+    INT64: 4,
+    TEXT: 5,
+    ZEROBLOB: 6,
+    NIL: 0x7f
   },
   
   init: function() {
-    database.EnumerableSource.prototype = jsinq.Enumerable.prototype;
     var build_table_def = function(name, create) {
-      var obj = new database.EnumerableSource(name);
+      var obj = {
+        name: name,
+        cols: {},
+        colnames: [],
+        types: [],
+        def: create,
+        pages: {}
+      };
       var rows = create.split('\n');
       for (var i = 1; i < rows.length; i++) {
         if (rows[i].trim().match(/(PRIMARY KEY|UNIQUE|FOREIGN KEY)/))
@@ -282,13 +226,80 @@ var database = {
             continue;
         obj.colnames.push(kv[1]);
         obj.cols[kv[1]] = kv[2];
+        var type = database.types.INT;
+        switch(kv[2].toLowerCase().substr(0,3)) {
+          case "int":
+          case "dat": //date
+          case "boo": //bolean
+          case "tim": //timestamp
+              break;
+          case "cha": //char
+          case "var": //varchar
+          case "nva": //nvarchar
+          case "tex": //text
+          case "clo": //clob
+              type = database.types.TEXT;
+              break;
+          case "flo": //float
+          case "num": //numeric
+              break;
+              type = database.types.DOUBLE;
+          case "blo": //blob
+              type = database.types.BLOB;
+        }
+        obj.types.push(type);
       }
-
       return obj;
     };
+    
+    var get_table_def = function(name, callback) {
+      var table = database.source[name];
+      if (!table) {
+        return callback(0);
+      }
+      sendMessage({'m':'stat', 'r':{'creating ':name, 'n':database.tables}});
+      return callback(table.def);
+    };
+    
+    var get_table_row = function(name, idx, callback) {
+        var table = database.source[name];
+        if (!table) {
+          return callback([], 0);
+        }
+        
+        if (database._training || true) {
+          if (idx >= 10) {
+            return callback([], 0);
+          }
+          var row = [];
+          for (var i = 0; i < table.types.length; i++) {
+            if (table.types[i] == database.types.INT) {
+              row.push(idx);
+            } else if (table.types[i] == database.types.TEXT) {
+              row.push("Example " + idx);
+            } else if (table.types[i] == database.types.DOUBLE) {
+              row.push(idx + Math.random());
+            } else if (table.types[i] == database.types.BLOB) {
+              row.push("Binary Example " + idx);
+            } else {
+              row.push(0);
+            }
+          }
+          return callback(table.types, row, 1 /* will return sync */);
+        } else {
+          //TODO
+          return;
+        }
+    };
+    
+    if (database.handle == null) {
+        SQL.init(get_table_def, get_table_row);
+        database.handle = SQL.open();
+    }
 
     if (database.source == null) {
       database.source = {};
+      database.tables = 0;
       database.stream_table("sqlite_master", function(data) {
         if (!data['rows']) {
           database.status = data['status'];
@@ -297,10 +308,11 @@ var database = {
         for(var i = 0; i < data['rows'].length; i ++) {
           var r = data['rows'][i];
           if (r[0] == "table") {
+            database.tables++;
             database.source[r[1]] = build_table_def(r[1], r[4]);
           }
         }
-      }, database._unblock);
+      }, database._finishSetup);
     }
   }
 };

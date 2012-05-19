@@ -20,14 +20,12 @@
         for (var i = 0; i < styles.length; i++) {
           var url = getUrl(styles[i]);
           document.write("<link href='" + url + "' rel='stylesheet'>");
-        }        
+        }
         var scripts = ['{{ static_url("js/jquery.js") }}',
             '{{ static_url("js/bootstrap.js") }}',
             '{{ static_url("js/d3.js") }}',
+            '{{ static_url("js/db_host.js") }}',
             '{{ static_url("js/network_pane.js") }}',
-            '{{ static_url("js/jsinq.js") }}',
-            '{{ static_url("js/jsinq-query.js") }}',
-            '{{ static_url("js/sql.js") }}',
             '{{ static_url("js/compose_pane.js") }}',
             '{{ static_url("js/sql_pane.js") }}',
             '{{ static_url("js/describe_pane.js") }}',
@@ -47,7 +45,7 @@
   <body>
   <div class="container">
     <header class="jumbotron subhead">
-      <h1>FORWARD to the Future!</h1>
+      <h1>SQLite.js: A P2P web database!</h1>
     </header>
     <section id="query">
     <div class="row">
@@ -76,7 +74,7 @@
         <div class="tab-content">
             <div class="tab-pane active" id="compose">
                 <div class="offset4 span4 progress progress-striped active">
-                    <div class="bar" style="width:100%;"></div>
+                    <div class="bar" style="width:0%;"></div>
                 </div>
             </div>
             <div class="tab-pane span11" id="network">

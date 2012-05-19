@@ -1,7 +1,17 @@
 var sql_pane = function(query) {
-  return this.newInstance(query);
+  this.query = query;
+  this.id = sql_pane.counter++;
+  if (query.trim().toLowerCase().indexOf("select") != 0) {
+    this.beginSQL();
+  } else {
+    this.beginSelect();
+  }
+
+  return this;
 }
+
 sql_pane.panes = [];
+sql_pane.counter = 1;
 sql_pane.init = function() {
   $("#queryform").submit(function(e) {
     e.preventDefault();
@@ -12,24 +22,15 @@ sql_pane.init = function() {
     return false;
   });
 };
-sql_pane.progressBar_ = function(type, percent) {
-  return "<div class='" + type + " progress progress-striped active'>" +
-      "<div class='bar' style='width: " + percent + "%;'></div></div>";
+
+sql_pane.prototype.beginSelect = function() {
+  this.createResultUI();
+  database.execute(this.query, this.renderData.bind(this));
 };
 
-
-sql_pane.counter = 1;
-sql_pane.prototype.newInstance = function(query) {
-  var instance = {
-    query: query,
-    id:sql_pane.counter++
-  };
-  instance.updateTable_ = this.updateTable_;
-
-  this.createResultUI.bind(instance).call();
-  database.get_schema(query, this.renderHead.bind(instance));
-  database.execute(query, this.renderData.bind(instance));
-  return instance;
+sql_pane.prototype.beginSQL = function() {
+  this.createResultUI();
+  database.execute(this.query, this.renderCompletion.bind(this));
 };
 
 sql_pane.prototype.createResultUI = function() {
@@ -42,7 +43,8 @@ sql_pane.prototype.createResultUI = function() {
 
   this.element = document.createElement("div");
   $(this.element).addClass("tab-pane").attr('id','result_' + this.id)
-      .html(sql_pane.progressBar_("offset4 span4", 25));
+      .html("<div class='offset4 span4 progress progress-striped active'>" +
+      "<div class='bar' style='width: 25%;'></div></div>");
   $("#results>.tab-content").append(this.element);
 
   var that = this;
@@ -69,24 +71,8 @@ sql_pane.prototype.updateTable_ = function() {
     this.element.innerHTML = '';
     this.element.appendChild(q);
     this.element.appendChild(this.table);
-  }
-  if (this.thead && !$(this.table).has(this.tbody).size()) {
-    $(this.table).find('.temphead').detach();
     this.table.appendChild(this.thead);
-  } else if (!this.thead) {
-    var tempHead = document.createElement('thead');
-    tempHead.className = 'temphead';
-    tempHead.innerHTML = '<tr><th colspan=100>' + sql_pane.progressBar_("", 100) + '</th></tr>';
-    this.table.appendChild(tempHead);
-  }
-  if (this.tbody && !$(this.table).has(this.tbody).size()) {
-    $(this.table).find('.tempbody').detach();
     this.table.appendChild(this.tbody);
-  } else if (!this.tbody) {
-    var tempBody = document.createElement('tbody');
-    tempBody.innerHTML = '<tr><td colspan=100>' + sql_pane.progressBar_("", 100) + '</td></tr>';
-    tempBody.className = 'tempbody';
-    this.table.appendChild(tempBody);
   }
 };
 
@@ -95,7 +81,7 @@ sql_pane.prototype.renderHead = function(data, error) {
   if (data && data.length) {
     for (var i = 0; i < data.length; i++) {
       var cell = document.createElement('th');
-      cell.innerHTML = data[i];
+      cell.innerHTML = data[i].column;
       this.thead.appendChild(cell);
     }
   } else {
@@ -103,21 +89,23 @@ sql_pane.prototype.renderHead = function(data, error) {
     cell.innerHTML = error ? "Error" : "Unknown";
     this.thead.appendChild(cell);
   }
-  this.updateTable_();
 };
 
 sql_pane.prototype.renderData = function(data, error) {
-  this.tbody = document.createElement('tbody');
+  if (!this.thead) {
+    this.renderHead(data,error);
+  }
+  if (!this.tbody) {
+    this.tbody = document.createElement('tbody');
+  }
   if (data) {
-    data.take(database.page_width - 5).each(function(line) {
-      var row = document.createElement('tr');
-      for (var i in line) {
-        var cell = document.createElement('td');
-        cell.innerHTML = line[i];
-        row.appendChild(cell);
-      }
-      this.tbody.appendChild(row);        
-    }.bind(this));
+    var row = document.createElement('tr');
+    for (var r = 0; r < data.length; r++) {
+      var cell = document.createElement('td');
+      cell.innerHTML = data[r].value;
+      row.appendChild(cell);
+    }
+    this.tbody.appendChild(row);
   } else {
     var row = document.createElement('tr');
     var cell = document.createElement('td');
@@ -126,4 +114,12 @@ sql_pane.prototype.renderData = function(data, error) {
     this.tbody.appendChild(row);
   }
   this.updateTable_();
+};
+
+sql_pane.prototype.renderCompletion = function(data, error) {
+  if (data) {
+    this.element.innerHTML = "<pre>" + data + "</pre>";
+  } else {
+    this.element.innerHTML = "<pre>" + (error || "Done.") + "</pre>";
+  }
 };
