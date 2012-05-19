@@ -16,7 +16,7 @@
     {
       //"matches": ["http://*/*, https://*/*"],
       "matches": ["<all_urls>"],
-      "js": ["js/nacl_transport.js"]
+      "js": ["js/contentscript.js"]
     }
   ],
   "permissions": [
