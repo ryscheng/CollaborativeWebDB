@@ -1,4 +1,5 @@
 //var bkg = chrome.extension.getBackgroundPage();
+var port = chrome.extension.connect({name: window.location.href});
 init();
 
 function init() {
