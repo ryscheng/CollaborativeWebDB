@@ -3,5 +3,6 @@ var COMMANDS = {
   connect: 1,
   write: 2,
   disconnect: 3,
-  destroy: 4
+  destroy: 4,
+  getidentifier: 5
 }

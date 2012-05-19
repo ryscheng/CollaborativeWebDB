@@ -1,3 +1,4 @@
+var GETIPURL = "http://checkip.dyndns.com/";
 var sockId = 0;
 var contentScripts = new Object();
 init();
@@ -41,6 +42,12 @@ function ContentScriptConnection(port) {
       chrome.experimental.socket.write(msg.socketId, msg.data, function(writeInfo) {
         port.postMessage({command: msg.command, writeInfo: writeInfo});
       });
+    } else if (msg.command == COMMANDS.getidentifier) {
+      function parseDomForIp(dom) {
+        var ip = dom.split("IP Address: ")[1].split("</body>")[0];
+        port.postMessage({command: msg.command, result: ip});
+      }
+      $.get(GETIPURL, {}, parseDomForIp);
     }
     
   }

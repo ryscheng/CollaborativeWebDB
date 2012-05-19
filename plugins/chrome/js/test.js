@@ -1,8 +1,7 @@
 init();
 
 function init() {
-  console.log("NaCl Test Init()");
-  window.addEventListener("message", receiveMessage, false);
+  console.log("Test Init()");
   var button = document.getElementById('button');
   button.onclick = buttonClick
   var statusField = document.getElementById('status_field');
@@ -11,29 +10,10 @@ function init() {
   }
 }
 
-function receiveMessage(event){
-  if (event.data.to == "page") {
-    console.log("NaCl Test sees: "+event.data.msg);
-  }
-}
-
 function buttonClick() {
   console.log("CLICK");
-  window.postMessage({to: "extension", msg: {command: "POOP", msg: "WOo WOoo"}}, window.location.origin);
+  var connection = new PeerConnection();
+  var id = connection.getIdentifier();
+  console.log(id);
 }
 
-function getVersionNacl() {
-
-}
-
-function getIdentifierNacl() {
-
-}
-
-function connectNacl(identifier) {
-
-}
-
-function sendDataNacl(msg) {
-
-}
