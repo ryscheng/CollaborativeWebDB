@@ -12,24 +12,20 @@ var database = {
       });
       if (database.source == null)
         database.init();
-      return;
+      return 0;
     }
 
-    window.setTimeout(function() {
-      if (!query.length) {
-        return callback(null, "No Query");
-      }
-      database._training = true;
-      log.write("training query");
-      try {
-        database.handle.exec(query, database._cost.bind(this, query, callback, only_train));
-      } catch(e) {
-        log.warn("error constructing query");
-        database._reset();
-        callback(null, e);
-        return;
-      }
-    }, 0);
+    if (!query.length) {
+      return callback(null, "No Query");
+    }
+    database._training = true;
+    try {
+      return database.handle.exec(query, database._cost.bind(this, query, callback, only_train));
+    } catch(e) {
+      database._reset();
+      callback(null, e);
+      return;
+    }
   },
   
   _cost: function(query, callback, only_train, answer) {
@@ -112,11 +108,10 @@ var database = {
           " using jsbacked;";
     }
     database.handle.exec(setup, database._unblock);
+    database._unblock();
   },
-  _unblock: function(a,b) {
-    console.log('unblock 1st arg' + a);
-    console.log('unblock 2nd arg' + b);
-    log.write("Database Initialized.");
+  _unblock: function() {
+    sendMessage({'m':'stat', 'r':'Database Initialized'});
     var waiters = database._blocked;
     database._blocked = false;
     for (var i = 0; i < waiters.length; i++) {
@@ -141,20 +136,50 @@ var database = {
         return callback();
     }
 
-    server.lookup(key.hash, function(peers) {
-        if (!peers.length) {
+    //server.lookup(key.hash, function(peers) {
+    //    if (!peers.length) {
             database.load_from_server(key, callback);
-        } else {
-            console.log('would get from peers');
+    //    } else {
+    //        console.log('would get from peers');
+    //    }
+    //});
+  },
+  
+  ajax: {
+        Version: '1.0.0',
+	
+		request: function(sync,callback,url)
+		{
+		       var r=(XMLHttpRequest)?new XMLHttpRequest:new ActiveXObject("Microsoft.XMLHTTP");
+		       if(!r) {return false;}
+		       if(!sync) {
+		               r.onreadystatechange = function() {callback(r);};
+		       }
+		       r.open("GET", url, !sync);
+	           r.send(null);
+	           if(!sync) {return true;}
+               
+	           if(r.responseText) {
+	                   return r.responseText;
+	           }
+	           return "Failed To Load";
+	    },
+        synchronous: function(url) {
+                return database.ajax.request(true,false,url);
+        },
+        asynchronous: function(url,callback) {
+                database.ajax.request(false,callback,url);
+                return true;
         }
-    });
   },
 
   load_from_server: function(key, callback) {
-    $.ajax({
-      url: "/data",
-      data: { t: key['table'], o: key['offset'] }
-    }).done(callback);
+    database.ajax.asynchronous("/data?t="+key['table']+"&o="+key['offset'], function(r) {
+      if (r.readyState == 4) {
+        var actual_data = JSON.parse(r.responseText);
+        callback(actual_data);
+      }
+    });
   },
   
   stream_table: function(table, callback, and_then, offset) {
@@ -230,10 +255,9 @@ var database = {
     var get_table_def = function(name, callback) {
       var table = database.source[name];
       if (!table) {
-        console.log ("whoops, couldn't find " + name);
         return callback(0);
       }
-      console.log ("returning " + table.def + " for " + name);
+      sendMessage({'m':'stat', 'r':{'creating ':name, 'n':database.tables}});
       return callback(table.def);
     };
     
@@ -269,12 +293,13 @@ var database = {
     };
     
     if (database.handle == null) {
-        window.SQL.init(get_table_def, get_table_row);
-        database.handle = window.SQL.open();
+        SQL.init(get_table_def, get_table_row);
+        database.handle = SQL.open();
     }
 
     if (database.source == null) {
       database.source = {};
+      database.tables = 0;
       database.stream_table("sqlite_master", function(data) {
         if (!data['rows']) {
           database.status = data['status'];
@@ -283,6 +308,7 @@ var database = {
         for(var i = 0; i < data['rows'].length; i ++) {
           var r = data['rows'][i];
           if (r[0] == "table") {
+            database.tables++;
             database.source[r[1]] = build_table_def(r[1], r[4]);
           }
         }
