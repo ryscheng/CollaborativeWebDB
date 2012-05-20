@@ -8,14 +8,15 @@
   "icons": {
     "128": "img/icon_128.png"
   },
-  "browser_action": {},
+  //"browser_action": {},
   "background": {
     "page": "background.html"
   },
   "content_scripts": [
     {
-      "matches": ["http://*/*, https://*/*"],
-      "js": ["js/nacl_transport.js"]
+      //"matches": ["http://*/*, https://*/*"],
+      "matches": ["<all_urls>"],
+      "js": ["js/contentscript.js"]
     }
   ],
   "permissions": [

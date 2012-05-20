@@ -1,6 +1,6 @@
 [submodule "server/tornado"]
 	path = server/tornado
 	url = https://github.com/facebook/tornado.git
-[submodule "npapi/firebreath"]
-	path = npapi/firebreath
+[submodule "plugins/npapi/firebreath"]
+	path = plugins/npapi/firebreath
 	url = git://github.com/firebreath/FireBreath.git
