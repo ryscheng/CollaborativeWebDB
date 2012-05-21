@@ -25,9 +25,9 @@ var compose_pane = {
     }
     if (tables == 0 || !s) {
       var result = document.createElement('div');
+      var msg = !s? "Initialization failed!  Check the log for details." : "No data loaded";
       $(result).addClass("alert")
-          .html("<strong>Warning!</strong> " +
-              (database.error || "Initialization failed!  Check the log for details."));
+          .html("<strong>Warning!</strong> " + (database.error || msg));
       $('#compose').append(result);
     }
   },
