@@ -32,7 +32,7 @@ addEventListener("message", function(event) {
       sendMessage({'m':'error', 'r': event.data});
     }
   } catch(e) {
-    postMessage("Error!");
+    sendMessage({'m':'error', 'r':e.stack});
   }
 }, false);
 

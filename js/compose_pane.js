@@ -5,31 +5,31 @@ var compose_pane = {
     // are more interesting than the data / completion ones.
     database.status_cb = compose_pane.update_status;
     database.exec("SELECT * FROM SQLITE_MASTER;", true, function() {}, function() {});
+    $('#compose .bar').css('width', "10%");
   },
   finish_init: function() {
-    console.log("finishing init");
-    database.backing(function(x) {console.log(x);});
+    log.write("Database loaded, reading tables.");
+    database.backing(compose_pane.render_sqlite);
   },
-  render_sqlite: function() {
-    //$('#compose').empty();
-/*
+  render_sqlite: function(s) {
+    $('#compose').empty();
+
     var tables = 0;
-    if (database.source) {
-      for (var i in database.source) {
+    if (s) {
+      for (var i in s) {
         tables++;
         var block = document.createElement("div");
         $('#compose').addClass('three-column span10 offset1').append($(block)
-           .append(compose_pane.render_table(database.source[i])));
+           .append(compose_pane.render_table(s[i])));
       }
     }
-    if (tables == 0 || !database.source) {
+    if (tables == 0 || !s) {
       var result = document.createElement('div');
       $(result).addClass("alert")
           .html("<strong>Warning!</strong> " +
-              (database.status || "Failed to connect to server!"));
+              (database.error || "Initialization failed!  Check the log for details."));
       $('#compose').append(result);
     }
-*/
   },
   _seen: 0,
   update_status: function(msg) {

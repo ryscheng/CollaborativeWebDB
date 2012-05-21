@@ -47,6 +47,8 @@ var database = {
           for (var i = 0; i < qcb.length; i++) {
             qcb[i](data['r']);
           }
+        } else if (data['m'] =='error') {
+          database._err(data['r']);
         } else {
           database.status_cb && database.status_cb(data['r']);
         }
@@ -54,11 +56,12 @@ var database = {
         database._err(event.data);
       }
     } catch (e) {
-      console.log(e);
+      database._err(e.stack);
     }
   },
-  _err: function(event) {
-    console.log(event);
-    log.warn(JSON.stringify(event));
+  _err: function(e) {
+    console.log(e);
+    log.warn("error received from database: " + e);
+    database.error = e;
   }
 };
