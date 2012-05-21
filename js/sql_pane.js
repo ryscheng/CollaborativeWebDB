@@ -83,14 +83,13 @@ sql_pane.prototype.renderHead = function(data, error) {
 };
 
 sql_pane.prototype.renderData = function(data, error) {
-  if (!this.thead) {
+  if (!this.thead && data && data.length) {
     this.renderHead(data[0], error);
   }
   if (!this.tbody) {
     this.tbody = document.createElement('tbody');
   }
-  console.log(data);
-  if (data) {
+  if (data && data.length) {
     for(var r = 0; r < data.length; r++) {
       var row = document.createElement('tr');
       for (var c = 0; c < data[r].length; c++) {
@@ -111,10 +110,11 @@ sql_pane.prototype.renderData = function(data, error) {
 };
 
 sql_pane.prototype.renderCompletion = function(data, error) {
-  console.log('done');
-//  if (data) {
-//    this.element.innerHTML = "<pre>" + data + "</pre>";
-//  } else {
-//    this.element.innerHTML = "<pre>" + (error || "Done.") + "</pre>";
-//  }
+  if (!this.thead) {
+    if (data) {
+      this.element.innerHTML = "<pre>" + data + "</pre>";
+    } else {
+      this.element.innerHTML = "<pre>" + (error || "Done.") + "</pre>";
+    }
+  }
 };
