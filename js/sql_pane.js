@@ -25,7 +25,9 @@ sql_pane.init = function() {
 
 sql_pane.prototype.beginSelect = function() {
   this.createResultUI();
-  database.execute(this.query, this.renderData.bind(this));
+  database.exec(this.query, false, this.renderData.bind(this), function() {
+    $('#result_' + this.id + ' bar').css('width','50%');
+  });
 };
 
 sql_pane.prototype.beginSQL = function() {
