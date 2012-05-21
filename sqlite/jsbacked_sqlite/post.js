@@ -1,6 +1,7 @@
 var apiTemp = Runtime.stackAlloc(4);
 var fileCounter = 0;
 
+var execCounter = 0;
 Module['execs'] = [];
 
 Module['open'] = function(data) {
@@ -21,9 +22,7 @@ Module['open'] = function(data) {
         'value': Pointer_stringify(getValue(argv + i*Runtime.QUANTUM_SIZE, 'i32'))
       });
     }
-    window.setTimeout(function() {
-      Module['execs'][ptr](curr,null);
-    }, 0);
+    Module['execs'][ptr].push(curr);
   };
 
   return {
@@ -40,8 +39,8 @@ Module['open'] = function(data) {
     'exec': function(sql, cb) {
       if (!this.ptr) throw 'Database closed!';
       setValue(apiTemp, 0, 'i32');
-      var cb_idx = Module['execs'].length;
-      Module['execs'].push(cb);
+      var cb_idx = execCounter++;
+      Module['execs'][cb_idx] = [];
       var ret = Module['ccall']('sqlite3_exec', 'number', ['number', 'string', 'number', 'number', 'number'],
                                 [this.ptr, sql, cb_ptr, cb_idx, apiTemp]);
       var errPtr = getValue(apiTemp, 'i32');
@@ -49,7 +48,10 @@ Module['open'] = function(data) {
         var msg = 'SQLite exception: ' + ret + (errPtr ? ', ' + Pointer_stringify(errPtr) : '');
         if (errPtr) _sqlite3_free(errPtr);
         cb(null,msg);
+      } else {
+        cb(Module['execs'][cb_idx], null);
       }
+      delete Module['execs'][cb_idx];
       return ret;
     },
 

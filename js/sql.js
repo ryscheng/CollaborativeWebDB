@@ -11,8 +11,8 @@ var database = {
         database.execute(query, callback);
       });
       if (database.source == null)
-        database.init();
-      return 0;
+        return database.init();
+      return "Currently Initializing";
     }
 
     if (!query.length) {
