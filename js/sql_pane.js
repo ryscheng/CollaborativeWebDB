@@ -1,11 +1,7 @@
 var sql_pane = function(query) {
   this.query = query;
   this.id = sql_pane.counter++;
-  if (query.trim().toLowerCase().indexOf("select") != 0) {
-    this.beginSQL();
-  } else {
-    this.beginSelect();
-  }
+  this.beginSelect();
 
   return this;
 }
@@ -25,14 +21,7 @@ sql_pane.init = function() {
 
 sql_pane.prototype.beginSelect = function() {
   this.createResultUI();
-  database.exec(this.query, false, this.renderData.bind(this), function() {
-    $('#result_' + this.id + ' bar').css('width','50%');
-  });
-};
-
-sql_pane.prototype.beginSQL = function() {
-  this.createResultUI();
-  database.execute(this.query, this.renderCompletion.bind(this));
+  database.exec(this.query, false, this.renderData.bind(this), this.renderCompletion.bind(this));
 };
 
 sql_pane.prototype.createResultUI = function() {
@@ -95,19 +84,22 @@ sql_pane.prototype.renderHead = function(data, error) {
 
 sql_pane.prototype.renderData = function(data, error) {
   if (!this.thead) {
-    this.renderHead(data,error);
+    this.renderHead(data[0], error);
   }
   if (!this.tbody) {
     this.tbody = document.createElement('tbody');
   }
+  console.log(data);
   if (data) {
-    var row = document.createElement('tr');
-    for (var r = 0; r < data.length; r++) {
-      var cell = document.createElement('td');
-      cell.innerHTML = data[r].value;
-      row.appendChild(cell);
+    for(var r = 0; r < data.length; r++) {
+      var row = document.createElement('tr');
+      for (var c = 0; c < data[r].length; c++) {
+        var cell = document.createElement('td');
+        cell.innerHTML = data[r][c].value;
+        row.appendChild(cell);
+      }
+      this.tbody.appendChild(row);
     }
-    this.tbody.appendChild(row);
   } else {
     var row = document.createElement('tr');
     var cell = document.createElement('td');
@@ -119,9 +111,10 @@ sql_pane.prototype.renderData = function(data, error) {
 };
 
 sql_pane.prototype.renderCompletion = function(data, error) {
-  if (data) {
-    this.element.innerHTML = "<pre>" + data + "</pre>";
-  } else {
-    this.element.innerHTML = "<pre>" + (error || "Done.") + "</pre>";
-  }
+  console.log('done');
+//  if (data) {
+//    this.element.innerHTML = "<pre>" + data + "</pre>";
+//  } else {
+//    this.element.innerHTML = "<pre>" + (error || "Done.") + "</pre>";
+//  }
 };
