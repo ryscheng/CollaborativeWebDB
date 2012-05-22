@@ -174,7 +174,8 @@ var database = {
   },
 
   load_from_server: function(key, callback) {
-    database.ajax.asynchronous("/data?t="+key['table']+"&o="+key['offset'], function(r) {
+    var q = "SELECT * FROM " + key['table'] + " limit " + key['offset'] + ",30";
+    database.ajax.asynchronous("/data?q=" + encodeURIComponent(q), function(r) {
       if (r.readyState == 4) {
         var actual_data = JSON.parse(r.responseText);
         callback(actual_data);

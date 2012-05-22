@@ -112,6 +112,12 @@ sql_pane.prototype.renderData = function(data, error) {
 sql_pane.prototype.renderCompletion = function(data, error) {
   if (!this.thead) {
     if (data) {
+      if (data == 1) data = "SQLITE_ERROR";
+      else if (data == 2) data = "SQLITE_INTERNAL";
+      else if (data == 3) data = "SQLITE_PERM";
+      else if (data == 4) data = "SQLITE_ABORT";
+      else if (data == 7) data = "SQLITE_NOMEM";
+
       this.element.innerHTML = "<pre>" + data + "</pre>";
     } else {
       this.element.innerHTML = "<pre>" + (error || "Done.") + "</pre>";
