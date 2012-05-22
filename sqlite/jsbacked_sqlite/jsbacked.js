@@ -19,9 +19,8 @@ Module['init'] = function(init_callback, retrieve_callback) {
             var value = 0;
             var length = 0;
             if (type == 0 || type == 2 ||  type == 5) { //blob, error, text
-              arr[i] += '\0';
               length = arr[i].length;
-              value = Module['allocate'](arr[i],'i8', 0 /* alloc_normal */);
+              value = Module['allocate'](intArrayFromString(arr[i]),'i8', 0 /* alloc_normal */);
             } else if (type == 1) { // double
               length = 8;
               value = Module['allocate'](1, 'double', 0 /* alloc_normal */);            
