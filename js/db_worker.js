@@ -5,10 +5,11 @@ var functions = {
     var query = args[0];
     var id = args[1];
     var only_train = args[2];
+    var page = args[3];
     var on_data = function(data, err) {
       sendMessage({'m':'exec', 'r':{'id': id, 'data':data, 'err':err}});
     }
-    var ret = database.execute(query, on_data, only_train);
+    var ret = database.execute(query, on_data, only_train, page);
     return {'id': id, 'ret': ret};
   },
   q: function() {
