@@ -22,6 +22,12 @@ var functions = {
   }
 };
 
+var Host = {
+  log: function(msg) {
+    sendMessage({'m':'log','r':msg});
+  }
+};
+
 addEventListener("message", function(event) {
   try {
     var data = JSON.parse(event.data);

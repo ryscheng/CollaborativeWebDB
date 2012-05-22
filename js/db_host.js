@@ -49,6 +49,8 @@ var database = {
           for (var i = 0; i < qcb.length; i++) {
             qcb[i](data['r']);
           }
+        } else if (data['m'] == 'log') {
+          log.write(data['r']);
         } else if (data['m'] =='error') {
           database._err(data['r']);
         } else {
