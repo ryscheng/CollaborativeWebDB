@@ -9,8 +9,9 @@
 #include "nacl_transport.h"
 
 namespace {
-  const char* const kLoadedStr = "LOADED";
+  const char* const kNotStr = "Received non-string message";
   const char* const kReplyStr = "HEWO BACK ATCHA";
+  const int MAX_RESULT_SIZE = 1024;
 }
 
 /// Handler for messages coming in from the browser via postMessage().  The
@@ -27,9 +28,39 @@ namespace {
 void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
   // TODO(sdk_user): 1. Make this function handle the incoming message.
   if (!var_message.is_string()) {
+    log_->log(kNotStr);
     return;
   }
-  log_->log(kReplyStr);
+  std::string message = var_message.AsString();
+  int32_t command = atoi(this->JsonGet(message, "\"command\"").c_str());
+  int32_t id = atoi(this->JsonGet(message, "\"id\"").c_str());
+  reqs_[id] = message;
+  fprintf(stdout,"id:%d:%s\n", id, message.c_str());
+
+  uint16_t port;
+  const uint8_t localhost[4] = {127, 0, 0, 1};
+  int32_t backlog = 5;
+  struct PP_NetAddress_Private address;
+  int32_t ret;
+
+  switch (command) {
+    case WEBP2P_CREATESERVERSOCKET:
+      if (!server_socket_) {
+        server_socket_ = new pp::TCPServerSocketPrivate(this);
+      }
+      this->Callback(0, id, &ret);
+      break;
+    case WEBP2P_LISTEN:
+      port = atoi(this->JsonGet(message, "\"port\"").c_str());
+      pp::NetAddressPrivate::CreateFromIPv4Address(localhost, port, &address);
+      server_socket_->Listen(&address, backlog, factory_.NewCallback(&NaclTransportInstance::Callback, id, &ret));
+      break;
+    case WEBP2P_ACCEPT:
+      break;
+    default:
+      break;
+  }
+  //while (id != -1) {}
   //TcpSocket* sock = new TcpSocket(this);
   //sockets_.push_back(sock);
   //log_->log(sockets_.size());
@@ -39,33 +70,33 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
 
 }
 
-//void NaclTransportInstance::NewPeer() {
-//}
+std::string NaclTransportInstance::JsonGet(std::string json, std::string key){
+  size_t front = json.find(key.c_str());
+  size_t back = json.find_first_of(',', front);
+  front = json.find_first_of(':', front)+1;
+  return json.substr(front, back-front);
+}
 
+void NaclTransportInstance::Callback(int32_t result, int32_t id, int32_t* pres){
+  char retStr[MAX_RESULT_SIZE];
+  fprintf(stdout, "callback:%d:%s\n", id, reqs_[id].c_str());
+  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":\"%s\"}", reqs_[id].c_str(), ppErrorToString(result));
+  log_->log(retStr);
+  reqs_.erase(id);
+}
 
 
 //---------------------------------------------------------------------------------
-/// The Module class.  The browser calls the CreateInstance() method to create
-/// an instance of your NaCl module on the web page.  The browser creates a new
-/// instance for each <embed> tag with type="application/x-nacl".
 class NaclTransportModule : public pp::Module {
   public:
     NaclTransportModule() : pp::Module() {}
     virtual ~NaclTransportModule() {}
-    /// Create and return a NaclTransportInstance object.
-    /// @param[in] instance The browser-side instance.
-    /// @return the plugin-side instance.
     virtual pp::Instance* CreateInstance(PP_Instance instance) {
       return new NaclTransportInstance(instance);
     }
 };
 
 namespace pp {
-  /// Factory function called by the browser when the module is first loaded.
-  /// The browser keeps a singleton of this module.  It calls the
-  /// CreateInstance() method on the object you return to make instances.  There
-  /// is one instance per <embed> tag on the page.  This is the main binding
-  /// point for your NaCl module with the browser.
   Module* CreateModule() {
     return new NaclTransportModule();
   }

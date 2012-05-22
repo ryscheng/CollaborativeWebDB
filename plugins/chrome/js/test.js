@@ -13,7 +13,12 @@ function init() {
 function buttonClick() {
   console.log("CLICK");
   var connection = new PeerConnection();
-  var id = connection.getIdentifier();
-  console.log(id);
+  connection.getIdentifier(consoleLog);
+  connection.createServerSocket(consoleLog);
+  connection.listen(consoleLog);
+  //connection.accept(consoleLog);
 }
 
+function consoleLog(msg) {
+  console.log(msg);
+}
