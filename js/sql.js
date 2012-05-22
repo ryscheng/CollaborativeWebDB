@@ -5,7 +5,30 @@ var database = {
   _training: false,
   _blocked: [],
   
-  execute: function(query, callback, only_train) {
+  execute: function(query, callback, only_train, page) {
+    // paging
+    if (page && !isNaN(page) && query.match(/^SELECT/i)) {
+      var pageSize = 10;
+      var qLimit = query.match(/LIMIT (\d+),?\s+?(\d+)?/);
+      
+      // find offset into results from which we will return
+      var offset = 0;
+      if (qLimit && qLimit[2]) {
+        offset = parseInt(qLimit[1]);
+      }
+      var pageOffset = pageSize * (page-1);
+      offset += pageOffset;
+
+      var limit = ' LIMIT '+offset+', '+pageSize;
+      
+      if (qLimit === null) { // no limit at end of query
+        query = query.replace(/;/, limit);
+      }
+      else {
+        query = query.replace(/ LIMIT.+;/, limit);
+      }
+    } 
+
     if (database._blocked !== false) {
       database._blocked.push(function() {
         database.execute(query, callback);

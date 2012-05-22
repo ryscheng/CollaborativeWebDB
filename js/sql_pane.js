@@ -1,6 +1,7 @@
 var sql_pane = function(query) {
   this.query = query;
   this.id = sql_pane.counter++;
+  this.page = 1;
   this.beginSelect();
 
   return this;
@@ -21,7 +22,9 @@ sql_pane.init = function() {
 
 sql_pane.prototype.beginSelect = function() {
   this.createResultUI();
-  database.exec(this.query, false, this.renderData.bind(this), this.renderCompletion.bind(this));
+  console.debug(this.query, this.page);
+  database.exec(this.query, false, this.renderData.bind(this), 
+                this.renderCompletion.bind(this), this.page);
 };
 
 sql_pane.prototype.createResultUI = function() {
@@ -33,9 +36,8 @@ sql_pane.prototype.createResultUI = function() {
   $("#results>ul").append(tab);
 
   this.element = document.createElement("div");
-  $(this.element).addClass("tab-pane").attr('id','result_' + this.id)
-      .html("<div class='offset4 span4 progress progress-striped active'>" +
-      "<div class='bar' style='width: 25%;'></div></div>");
+  $(this.element).addClass("tab-pane").attr('id','result_' + this.id);
+  this.loadingMode(); 
   $("#results>.tab-content").append(this.element);
 
   var that = this;
@@ -51,6 +53,13 @@ sql_pane.prototype.createResultUI = function() {
   $(title).append(closer).tab('show');
 };
 
+sql_pane.prototype.loadingMode = function() {
+  delete this.tbody;
+  delete this.thead;
+  delete this.table;
+  $(this.element).html("<div class='offset4 span4 progress progress-striped active'>" +
+      "<div class='bar' style='width: 25%;'></div></div>");
+}
 sql_pane.prototype.updateTable_ = function() {
   if (!this.table) {
     var q = document.createElement('p');
@@ -59,11 +68,34 @@ sql_pane.prototype.updateTable_ = function() {
 
     this.table = document.createElement('table');
     $(this.table).addClass('table table-bordered table-striped');
+
+    // pager
+    var pager = document.createElement('ul');
+    $(pager).addClass('pager');
+    var nextid = 'result_'+this.id+'_next';
+    var previd = 'result_'+this.id+'_prev';
+    pager.innerHTML = '<li><a href="#" id="'+previd+'">Previous</a></li>'+'<li><a href="#" id="'+nextid+'">Next</a></li>';
+
     this.element.innerHTML = '';
     this.element.appendChild(q);
     this.element.appendChild(this.table);
+    this.element.appendChild(pager);
     this.table.appendChild(this.thead);
     this.table.appendChild(this.tbody);
+
+    var that = this;
+    $('#'+previd).click(function(e) {
+      that.page--;
+      if (that.page < 1) { that.page = 1; } 
+      that.loadingMode();
+      database.exec(that.query, false, that.renderData.bind(that), that.renderCompletion.bind(that), that.page);
+    });
+    $('#'+nextid).click(function(e) {
+      that.page++;
+      that.loadingMode();
+      database.exec(that.query, false, that.renderData.bind(that), that.renderCompletion.bind(that), that.page);
+
+    });
   }
 };
 

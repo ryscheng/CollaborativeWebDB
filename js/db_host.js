@@ -7,11 +7,11 @@ var database = {
   completion_cbs: [],
   backing_cbs: [],
   status_cb: null,
-  exec: function(query, only_train, data_cb, completion_cb) {
+  exec: function(query, only_train, data_cb, completion_cb, page) {
     var i = database.c++ || 0;
     database.data_cbs[i] = data_cb;
     database.completion_cbs[i] = completion_cb;
-    database.worker.contentWindow.postMessage(JSON.stringify({'m':'exec', 'a':[query, i, only_train]}), "*");
+    database.worker.contentWindow.postMessage(JSON.stringify({'m':'exec', 'a':[query, i, only_train, page]}), "*");
   },
   backing: function(cb) {
     database.backing_cbs.push(cb);
