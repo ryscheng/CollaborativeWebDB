@@ -1,4 +1,3 @@
-export NACL_EXE_STDOUT=DEBUG_ONLY:dev://postmessage
-export NACL_EXE_STDERR=DEBUG_ONLY:dev://postmessage
-#google-chrome --enable-nacl --allow-nacl-socket-api="*" --enable-media-stream --enable-experimental-extension-apis
-google-chrome --enable-nacl --allow-nacl-socket-api="alkkelofgalfllkecjnflbkpplaepmee" --enable-media-stream --enable-experimental-extension-apis
+export NACL_EXE_STDOUT=/home/ryscheng/Desktop/stdout.log
+export NACL_EXE_STDERR=/home/ryscheng/Desktop/stderr.log
+google-chrome --enable-nacl --allow-nacl-socket-api="giibeplhmeoadncnhbdagceomglfkpjh" --enable-media-stream --enable-experimental-extension-apis --no-sandbox
