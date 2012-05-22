@@ -197,7 +197,7 @@ var database = {
   },
 
   load_from_server: function(key, callback) {
-    var q = "SELECT * FROM " + key['table'] + " limit " + key['offset'] + ",30";
+    var q = "SELECT * FROM " + key['table'] + " limit " + key['offset'] + ",30;";
     database.ajax.asynchronous("/data?q=" + encodeURIComponent(q), function(r) {
       if (r.readyState == 4) {
         var actual_data = JSON.parse(r.responseText);
@@ -210,11 +210,14 @@ var database = {
     if (!offset)
       offset = 0;
     database.load_page(database.get_page_key(table, offset), function(data) {
-      if (data['rows'] && data['range'][1] < data['total']) {
-        database.stream_table(table, callback, and_then, data['range'][1]);
+      var more = true;
+      if (data['rows'] && data['rows'].length == database.page_width) {
+        database.stream_table(table, callback, and_then, offset + database.page_width);
+      } else {
+        more = false;
       }
       callback(data);
-      if ((!data['range'] || !data['total'] || data['range'][1] >= data['total']) && and_then) {
+      if (!more && and_then) {
         and_then();
       }
     });

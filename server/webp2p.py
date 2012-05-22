@@ -19,6 +19,7 @@ import tornado.options
 import tornado.web
 import tornado.websocket
 import os.path
+import urllib
 import uuid
 
 from tornado.options import define, options
@@ -69,13 +70,13 @@ class DataHandler(tornado.web.RequestHandler):
             self.db = None
 
     def get(self):
-        q = self.get_argument('q')
+        q = urllib.unquote_plus(self.get_argument('q'))
         retval = {}
         if self.db:
             c = self.db.cursor()
             try:
                 c.execute(q)
-                retval['rows'] = c.fetchmany(pagesize)
+                retval['rows'] = c.fetchmany(DataHandler.pagesize)
             except Exception as e:
                 retval['status'] = e.__str__()
         else:
