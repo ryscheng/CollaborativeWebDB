@@ -7,6 +7,7 @@ var COMMANDS = {
   getpublicip: 5,
   createserversocket: 6,
   listen: 7,
-  accept: 8
+  accept: 8,
+  stoplistening: 9
 }
 var GETIPURL = "http://checkip.dyndns.com/";

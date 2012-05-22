@@ -38,7 +38,7 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
   fprintf(stdout,"id:%d:%s\n", id, message.c_str());
 
   uint16_t port;
-  const uint8_t localhost[4] = {127, 0, 0, 1};
+  const uint8_t localhost[4] = {0, 0, 0, 0};
   int32_t backlog = 5;
   struct PP_NetAddress_Private address;
   int32_t ret;
@@ -56,6 +56,16 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
       server_socket_->Listen(&address, backlog, factory_.NewCallback(&NaclTransportInstance::Callback, id, &ret));
       break;
     case WEBP2P_ACCEPT:
+      socket_res_[id] = new PP_Resource();
+      server_socket_->Accept(socket_res_[id], factory_.NewCallback(&NaclTransportInstance::AcceptCallback, id, &ret));
+      break;
+    case WEBP2P_STOPLISTENING:
+      if (server_socket_) {
+        server_socket_->StopListening();
+        delete server_socket_;
+        server_socket_ = NULL;
+      }
+      this->Callback(0, id, &ret);
       break;
     default:
       break;
@@ -84,6 +94,16 @@ void NaclTransportInstance::Callback(int32_t result, int32_t id, int32_t* pres){
   log_->log(retStr);
   reqs_.erase(id);
 }
+
+void NaclTransportInstance::AcceptCallback(int32_t result, int32_t id, int32_t* pres){
+  char retStr[MAX_RESULT_SIZE];
+  fprintf(stdout, "callback:%d:%s\n", id, reqs_[id].c_str());
+  sockets_[id] = new pp::TCPSocketPrivate(pp::PassRef(), *(socket_res_[id]));
+  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":\"%s\",\"socketId\":\"%d\"}", reqs_[id].c_str(), ppErrorToString(result), id);
+  log_->log(retStr);
+  reqs_.erase(id);
+}
+
 
 
 //---------------------------------------------------------------------------------

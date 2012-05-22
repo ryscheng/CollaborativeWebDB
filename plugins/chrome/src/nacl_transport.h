@@ -28,7 +28,8 @@ enum COMMANDS {
   WEBP2P_GETPUBLICIP,
   WEBP2P_CREATESERVERSOCKET,
   WEBP2P_LISTEN, 
-  WEBP2P_ACCEPT
+  WEBP2P_ACCEPT,
+  WEBP2P_STOPLISTENING
 };
 
 class NaclTransportInstance : public pp::Instance {
@@ -36,16 +37,20 @@ class NaclTransportInstance : public pp::Instance {
     explicit NaclTransportInstance(PP_Instance instance) : pp::Instance(instance), factory_(this){
       log_ = new Logger(this);
     }
-    virtual ~NaclTransportInstance(){}
+    virtual ~NaclTransportInstance(){
+      delete log_;
+    }
 
     virtual void HandleMessage(const pp::Var& var_message);
     void Callback(int32_t result, int32_t id, int32_t* pres);
+    void AcceptCallback(int32_t result, int32_t id, int32_t* pres);
   private:
     Logger* log_;
-    pp::TCPServerSocketPrivate* server_socket_;
     pp::CompletionCallbackFactory<NaclTransportInstance, ThreadSafeRefCount> factory_;
-    std::vector<pp::TCPSocketPrivate*> sockets_;
     std::map<int32_t, std::string> reqs_;
+    pp::TCPServerSocketPrivate* server_socket_;
+    std::map<int32_t, PP_Resource*> socket_res_;
+    std::map<int32_t, pp::TCPSocketPrivate*> sockets_;
 
     std::string JsonGet(std::string json, std::string key);
 

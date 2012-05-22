@@ -23,7 +23,7 @@ function sendCommand(msg, callback){
 
 function webp2pReceiveMessage(event){
   if ((typeof event.data.to !== 'undefined') && (event.data.to == "page")) {
-    WebP2PCallbacks[event.data.msg.request.id](event.data.msg.result);
+    WebP2PCallbacks[event.data.msg.request.id](event.data.msg);
     delete WebP2PCallbacks[event.data.msg.request.id];
   }
 }
@@ -40,6 +40,9 @@ function PeerConnection() {
   }
   this.accept = function(callback) {
     sendCommand({command: COMMANDS.accept}, callback);
+  }
+  this.stoplistening = function(callback) {
+    sendCommand({command: COMMANDS.stoplistening}, callback);
   }
 
 }
