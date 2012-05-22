@@ -35,7 +35,10 @@ sql_pane.prototype.createResultUI = function() {
   $(tab).append(title);
   $("#results>ul").append(tab);
 
+  this.element = document.createElement("div");
+  $(this.element).addClass("tab-pane").attr('id','result_' + this.id);
   this.loadingMode(); 
+  $("#results>.tab-content").append(this.element);
 
   var that = this;
   var closer = document.createElement("i");
@@ -54,12 +57,8 @@ sql_pane.prototype.loadingMode = function() {
   delete this.tbody;
   delete this.thead;
   delete this.table;
-  delete this.element;
-  this.element = document.createElement("div");
-  $(this.element).addClass("tab-pane").attr('id','result_' + this.id)
-      .html("<div class='offset4 span4 progress progress-striped active'>" +
+  $(this.element).html("<div class='offset4 span4 progress progress-striped active'>" +
       "<div class='bar' style='width: 25%;'></div></div>");
-  $("#results>.tab-content").append(this.element);
 }
 sql_pane.prototype.updateTable_ = function() {
   if (!this.table) {
