@@ -94,6 +94,7 @@ sql_pane.prototype.updateTable_ = function() {
       if (that.page > 1) that.page--;
       else return false;
       if (that.page == 1) { $('#result_'+this.id+' li.previous').addClass('disabled'); } 
+      $('#result_'+this.id+' li.next').removeClass('disabled');
       that.loadingMode();
       database.exec(that.query, false, that.renderData.bind(that), that.renderCompletion.bind(that), that.page);
       return false;
@@ -165,6 +166,10 @@ sql_pane.prototype.renderCompletion = function(data, error) {
       this.element.innerHTML = "<pre>" + error + "</pre>";
     } else if (this.page == 1) {
       this.element.innerHTML = "<pre>Done.</pre>";
+    }
+  } else {
+    if (this.tbody.childNodes.length < database.page_width) {
+      $('#result_'+this.id+' li.next').addClass('disabled');
     }
   }
 };

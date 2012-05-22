@@ -53,6 +53,8 @@ var database = {
           log.write(data['r']);
         } else if (data['m'] =='error') {
           database._err(data['r']);
+        } else if (data['m'] =='set') {
+          database[data['r'][0]] = data['r'][1];
         } else {
           database.status_cb && database.status_cb(data['r']);
         }

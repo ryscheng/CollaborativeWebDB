@@ -23,6 +23,9 @@ var functions = {
 };
 
 var Host = {
+  prop: function(key, val) {
+    sendMessage({'m':'set','r':[key,val]});
+  },
   log: function(msg) {
     sendMessage({'m':'log','r':msg});
   },

@@ -318,7 +318,8 @@ var database = {
           return;
         }
     };
-    
+
+    Host.prop('page_width', database.page_width);
     if (database.handle == null) {
         SQL.init(get_table_def, get_table_row);
         database.handle = SQL.open();
