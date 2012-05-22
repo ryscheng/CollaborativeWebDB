@@ -77,6 +77,8 @@ class DataHandler(tornado.web.RequestHandler):
             try:
                 c.execute(q)
                 retval['rows'] = c.fetchmany(DataHandler.pagesize)
+                cols = [col[0] for idx,col in enumerate(c.description)]
+                retval['cols'] = cols
             except Exception as e:
                 retval['status'] = e.__str__()
         else:
