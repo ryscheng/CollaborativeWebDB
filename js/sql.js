@@ -32,7 +32,7 @@ var database = {
         return database.handle.exec(query_page1, database._cost.bind(this, query_current, callback, only_train));
       } catch(e) {
         database._reset();
-        callback(null, e);
+        callback(null, e.stack);
         return 1;
       }
     } else {
@@ -112,6 +112,7 @@ var database = {
       var key = database.get_complex_page_key(query);
       database.load_page(key, function() {
         var result = database._get(key);
+console.log('result get:' + result);        
         var cols = result['cols'];
         var rows = result['rows'];
         for (var r = 0; r < rows.length; r++) {
@@ -149,15 +150,15 @@ var database = {
   },
 
   get_table_page_key: function(table, offset) {
-    var q = "SELECT * FROM " + table + " limit " +offset + ",30;";
+    var q = "SELECT * FROM " + table + " limit " + offset + ",30;";
     return {"query": q,
             "table": table,
             "hash": table + "." + offset};
   },
   
   get_complex_page_key: function(query) {
-    return {"query": q,
-            "hash": CryptoJS.MD5(q.trim())};
+    return {"query": query,
+            "hash": CryptoJS.MD5(query.trim())};
   },
   
   _get: function(key) {
