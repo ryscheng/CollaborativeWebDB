@@ -25,7 +25,10 @@ var functions = {
 var Host = {
   log: function(msg) {
     sendMessage({'m':'log','r':msg});
-  }
+  },
+  get_hash: function(hash) {
+    
+  },
 };
 
 addEventListener("message", function(event) {

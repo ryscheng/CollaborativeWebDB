@@ -56,7 +56,10 @@ sql_pane.prototype.createResultUI = function() {
 sql_pane.prototype.loadingMode = function() {
   delete this.tbody;
   delete this.thead;
-  delete this.table;
+  if (this.table) {
+    $('#result_' + this.id + ' a').unbind();
+    delete this.table;
+  }
   $(this.element).html("<div class='offset4 span4 progress progress-striped active'>" +
       "<div class='bar' style='width: 25%;'></div></div>");
 }
@@ -74,27 +77,34 @@ sql_pane.prototype.updateTable_ = function() {
     $(pager).addClass('pager');
     var nextid = 'result_'+this.id+'_next';
     var previd = 'result_'+this.id+'_prev';
-    pager.innerHTML = '<li><a href="#" id="'+previd+'">Previous</a></li>'+'<li><a href="#" id="'+nextid+'">Next</a></li>';
+    pager.innerHTML = '<li class="previous"><a href="#" id="'+previd+'">Previous</a></li>'+
+        '<li class="next"><a href="#" id="'+nextid+'">Next</a></li>';
 
     this.element.innerHTML = '';
     this.element.appendChild(q);
     this.element.appendChild(this.table);
     this.element.appendChild(pager);
-    this.table.appendChild(this.thead);
+    this.thead && this.table.appendChild(this.thead);
     this.table.appendChild(this.tbody);
 
     var that = this;
+    if (this.page == 1) {$('#result_'+this.id+' li.previous').addClass('disabled');}
     $('#'+previd).click(function(e) {
-      that.page--;
-      if (that.page < 1) { that.page = 1; } 
+      e.preventDefault();
+      if (that.page > 1) that.page--;
+      else return false;
+      if (that.page == 1) { $('#result_'+this.id+' li.previous').addClass('disabled'); } 
       that.loadingMode();
       database.exec(that.query, false, that.renderData.bind(that), that.renderCompletion.bind(that), that.page);
+      return false;
     });
     $('#'+nextid).click(function(e) {
+      e.preventDefault();
       that.page++;
+      $('#result_'+this.id+' li.previous').removeClass('disabled');
       that.loadingMode();
       database.exec(that.query, false, that.renderData.bind(that), that.renderCompletion.bind(that), that.page);
-
+      return false;
     });
   }
 };
@@ -151,8 +161,10 @@ sql_pane.prototype.renderCompletion = function(data, error) {
       else if (data == 7) data = "SQLITE_NOMEM";
 
       this.element.innerHTML = "<pre>" + data + "</pre>";
-    } else {
-      this.element.innerHTML = "<pre>" + (error || "Done.") + "</pre>";
+    } else if (error) {
+      this.element.innerHTML = "<pre>" + error + "</pre>";
+    } else if (this.page == 1) {
+      this.element.innerHTML = "<pre>Done.</pre>";
     }
   }
 };

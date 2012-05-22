@@ -30,7 +30,7 @@ var server = {
   
   lookup: function(key, result) {
     log.write("Looking up " + key);
-    if(server.write({"event":"get","key":key})) {
+    if(server.write({"event":"get", "key":key})) {
       if (server.waiters[key + ".cache"]) {
         return result(server.waiters[key + ".cache"]);
       }

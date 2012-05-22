@@ -60,6 +60,7 @@ var database = {
         database._err(event.data);
       }
     } catch (e) {
+      console.log(e);
       database._err(e.stack);
     }
   },
