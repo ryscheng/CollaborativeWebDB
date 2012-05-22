@@ -39,6 +39,12 @@ class NaclTransportInstance : public pp::Instance {
     }
     virtual ~NaclTransportInstance(){
       delete log_;
+      if (server_socket_){
+        delete server_socket_;
+      }
+      reqs_.clear();
+      socket_res_.clear();
+      sockets_.clear();
     }
 
     virtual void HandleMessage(const pp::Var& var_message);

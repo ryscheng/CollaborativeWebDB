@@ -62,8 +62,8 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
     case WEBP2P_STOPLISTENING:
       if (server_socket_) {
         server_socket_->StopListening();
-        delete server_socket_;
-        server_socket_ = NULL;
+        //delete server_socket_;
+        //server_socket_ = NULL;
       }
       this->Callback(0, id, &ret);
       break;
