@@ -29,7 +29,25 @@ function webp2pReceiveMessage(event){
 }
 
 function PeerConnection() {
-  this.getIdentifier = function(callback) {
+  this.createSocket = function(callback) {
+    sendCommand({command: COMMANDS.createsocket}, callback);
+  }
+  this.connect = function(socketId, host, port, callback) {
+    sendCommand({command: COMMANDS.connect, socketId: socketId, host: host, port: port}, callback);
+  }
+  this.read = function(socketId, numBytes, callback) {
+    sendCommand({command: COMMANDS.read, socketId: socketId, numBytes: numBytes}, callback);
+  }
+  this.write = function(socketId, data, callback) {
+    sendCommand({command: COMMANDS.write, socketId: socketId, data: data}, callback);
+  }
+  this.disconnect = function(socketId, callback) {
+    sendCommand({command: COMMANDS.disconnect, socketId: socketId}, callback);
+  }
+  this.destroy = function(socketId, callback) {
+    sendCommand({command: COMMANDS.destroy, socketId: socketId}, callback);
+  }
+  this.getPublicIp = function(callback) {
     sendCommand({command: COMMANDS.getpublicip}, callback);
   }
   this.createServerSocket = function(callback) {

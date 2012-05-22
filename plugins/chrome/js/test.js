@@ -13,18 +13,42 @@ function init() {
 function buttonClick() {
   console.log("CLICK");
   var connection = new PeerConnection();
-  connection.getIdentifier(function (msg) {
+  connection.getPublicIp(function (msg) {
     console.log(JSON.stringify(msg));
     connection.createServerSocket(function(msg) {
       console.log("CreateServerSocket:"+JSON.stringify(msg));
       connection.listen(function (msg) {
-        console.log("Listen:"+JSON.stringify(msg));
+        console.log("ServerListen:"+JSON.stringify(msg));
         connection.accept(function (msg) {
-          console.log("Accept:"+JSON.stringify(msg));
-          connection.stoplistening(function (msg) {
-            console.log("StopListening:"+JSON.stringify(msg));
+          console.log("ServerAccept:"+JSON.stringify(msg));
+          connection.read(msg.socketId, 17, function(msg) {
+            console.log("ServerRead:"+JSON.stringify(msg));
+            connection.disconnect(msg.request.socketId, function (msg) {
+              console.log("StopListening:"+JSON.stringify(msg));
+            });
+            connection.destroy(msg.request.socketId, function (msg) {
+              console.log("StopListening:"+JSON.stringify(msg));
+            });
+            connection.stoplistening(function (msg) {
+              console.log("StopListening:"+JSON.stringify(msg));
+            });
           });
         });
+        connection.createSocket(function(msg) {
+          console.log("CreateClientSocket:"+JSON.stringify(msg));
+          connection.connect(msg.socketId, "127.0.0.1", 9229, function (msg) {
+            console.log("ClientConnect:"+JSON.stringify(msg));
+            connection.write(msg.request.socketId, "HELLO FROM CLIENT", function (msg) {
+              console.log("ClientWrite:"+JSON.stringify(msg));
+              connection.disconnect(msg.request.socketId, function(msg) {
+                console.log("ClientDisconnect:"+JSON.stringify(msg));
+                connection.destroy(msg.request.socketId, function(msg) {
+                  console.log("ClientDestroy:"+JSON.stringify(msg));
+                });
+              });
+            });
+          });
+        })
       });
     });
   });

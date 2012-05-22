@@ -37,6 +37,8 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
   reqs_[id] = message;
   fprintf(stdout,"id:%d:%s\n", id, message.c_str());
 
+  int32_t sockId;
+  std::string host;
   uint16_t port;
   const uint8_t localhost[4] = {0, 0, 0, 0};
   int32_t backlog = 5;
@@ -44,39 +46,76 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
   int32_t ret;
 
   switch (command) {
+    case WEBP2P_CREATESOCKET:
+      this->NewSocketCallback(PP_OK, id, false, &ret);
+      break;
+    case WEBP2P_CONNECT:
+      sockId = atoi(this->JsonGet(message, "\"socketId\"").c_str());
+      if (sockets_.count(sockId) > 0) {
+        host = this->JsonGet(message, "\"host\"");
+        host = host.substr(1, host.size()-2); //trim quotes
+        port = atoi(this->JsonGet(message, "\"port\"").c_str());
+        sockets_[sockId]->Connect(host.c_str(), port, factory_.NewCallback(&NaclTransportInstance::Callback, id, &ret));
+      } else {
+        this->Callback(PP_ERROR_BADRESOURCE, id, &ret);
+      }
+      break;
+    case WEBP2P_READ:
+      sockId = atoi(this->JsonGet(message, "\"socketId\"").c_str());
+      this->Callback(PP_OK, id, &ret);
+      break;
+    case WEBP2P_WRITE:
+      sockId = atoi(this->JsonGet(message, "\"socketId\"").c_str());
+      this->Callback(PP_OK, id, &ret);
+      break;
+    case WEBP2P_DISCONNECT:
+      sockId = atoi(this->JsonGet(message, "\"socketId\"").c_str());
+      if (sockets_.count(sockId) > 0) {
+        sockets_[sockId]->Disconnect();
+        this->Callback(PP_OK, id, &ret);
+      } else {
+        this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
+      }
+      break;
+    case WEBP2P_DESTROY:
+      sockId = atoi(this->JsonGet(message, "\"socketId\"").c_str());
+      sockets_.erase(sockId);
+      socket_res_.erase(sockId);
+      this->Callback(PP_OK, id, &ret);
+      break;
     case WEBP2P_CREATESERVERSOCKET:
       if (!server_socket_) {
         server_socket_ = new pp::TCPServerSocketPrivate(this);
       }
-      this->Callback(0, id, &ret);
+      this->Callback(PP_OK, id, &ret);
       break;
     case WEBP2P_LISTEN:
-      port = atoi(this->JsonGet(message, "\"port\"").c_str());
-      pp::NetAddressPrivate::CreateFromIPv4Address(localhost, port, &address);
-      server_socket_->Listen(&address, backlog, factory_.NewCallback(&NaclTransportInstance::Callback, id, &ret));
+      if (server_socket_){
+        port = atoi(this->JsonGet(message, "\"port\"").c_str());
+        pp::NetAddressPrivate::CreateFromIPv4Address(localhost, port, &address);
+        server_socket_->Listen(&address, backlog, factory_.NewCallback(&NaclTransportInstance::Callback, id, &ret));
+      } else {
+        this->Callback(PP_ERROR_FAILED, id, &ret);
+      }
       break;
     case WEBP2P_ACCEPT:
-      socket_res_[id] = new PP_Resource();
-      server_socket_->Accept(socket_res_[id], factory_.NewCallback(&NaclTransportInstance::AcceptCallback, id, &ret));
+      if (server_socket_) {
+        socket_res_[id] = new PP_Resource();
+        server_socket_->Accept(socket_res_[id], factory_.NewCallback(&NaclTransportInstance::NewSocketCallback, id, true, &ret));
+      } else {
+        this->Callback(PP_ERROR_FAILED, id, &ret);
+      }
       break;
     case WEBP2P_STOPLISTENING:
       if (server_socket_) {
         server_socket_->StopListening();
-        //delete server_socket_;
-        //server_socket_ = NULL;
       }
-      this->Callback(0, id, &ret);
+      this->Callback(PP_OK, id, &ret);
       break;
     default:
+      this->Callback(PP_ERROR_FAILED, id, &ret); 
       break;
   }
-  //while (id != -1) {}
-  //TcpSocket* sock = new TcpSocket(this);
-  //sockets_.push_back(sock);
-  //log_->log(sockets_.size());
-  //sock->connect("127.0.0.1", 80);
-  //sock->close();
-  //delete sock;
 
 }
 
@@ -95,11 +134,15 @@ void NaclTransportInstance::Callback(int32_t result, int32_t id, int32_t* pres){
   reqs_.erase(id);
 }
 
-void NaclTransportInstance::AcceptCallback(int32_t result, int32_t id, int32_t* pres){
+void NaclTransportInstance::NewSocketCallback(int32_t result, int32_t id, bool from_res, int32_t* pres){
   char retStr[MAX_RESULT_SIZE];
   fprintf(stdout, "callback:%d:%s\n", id, reqs_[id].c_str());
-  sockets_[id] = new pp::TCPSocketPrivate(pp::PassRef(), *(socket_res_[id]));
-  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":\"%s\",\"socketId\":\"%d\"}", reqs_[id].c_str(), ppErrorToString(result), id);
+  if (from_res) {
+    sockets_[id] = new pp::TCPSocketPrivate(pp::PassRef(), *(socket_res_[id]));
+  } else {
+    sockets_[id] = new pp::TCPSocketPrivate(this);
+  }
+  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":\"%s\",\"socketId\":%d}", reqs_[id].c_str(), ppErrorToString(result), id);
   log_->log(retStr);
   reqs_.erase(id);
 }
