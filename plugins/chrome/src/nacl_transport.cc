@@ -12,6 +12,8 @@ namespace {
   const char* const kNotStr = "Received non-string message";
   const char* const kReplyStr = "HEWO BACK ATCHA";
   const int MAX_RESULT_SIZE = 1024;
+  const int MAX_DATA_SIZE = 2048;
+  char readBuf[MAX_DATA_SIZE];
 }
 
 /// Handler for messages coming in from the browser via postMessage().  The
@@ -40,6 +42,8 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
   int32_t sockId;
   std::string host;
   uint16_t port;
+  int32_t numBytes;
+  std::string data;
   const uint8_t localhost[4] = {0, 0, 0, 0};
   int32_t backlog = 5;
   struct PP_NetAddress_Private address;
@@ -62,11 +66,14 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
       break;
     case WEBP2P_READ:
       sockId = atoi(this->JsonGet(message, "\"socketId\"").c_str());
-      this->Callback(PP_OK, id, &ret);
+      numBytes = atoi(this->JsonGet(message, "\"numBytes\"").c_str());
+      sockets_[sockId]->Read(readBuf,numBytes,factory_.NewCallback(&NaclTransportInstance::ReadCallback, id, numBytes, &ret));
       break;
     case WEBP2P_WRITE:
       sockId = atoi(this->JsonGet(message, "\"socketId\"").c_str());
-      this->Callback(PP_OK, id, &ret);
+      data = this->JsonGet(message, "\"data\"");
+      data = data.substr(1, host.size()-2); //trim quotes
+      sockets_[sockId]->Write(data.c_str(), data.size(), factory_.NewCallback(&NaclTransportInstance::Callback, id, &ret));
       break;
     case WEBP2P_DISCONNECT:
       sockId = atoi(this->JsonGet(message, "\"socketId\"").c_str());
@@ -130,6 +137,15 @@ void NaclTransportInstance::Callback(int32_t result, int32_t id, int32_t* pres){
   char retStr[MAX_RESULT_SIZE];
   fprintf(stdout, "callback:%d:%s\n", id, reqs_[id].c_str());
   snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":\"%s\"}", reqs_[id].c_str(), ppErrorToString(result));
+  log_->log(retStr);
+  reqs_.erase(id);
+}
+
+void NaclTransportInstance::ReadCallback(int32_t result, int32_t id, int32_t numBytes, int32_t* pres){
+  char retStr[MAX_RESULT_SIZE];
+  fprintf(stdout, "callback:%d:%s\n", id, reqs_[id].c_str());
+  readBuf[numBytes] = '\0'; //Just in case?
+  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":\"%s\",\"data\":\"%s\"}", reqs_[id].c_str(), ppErrorToString(result), readBuf);
   log_->log(retStr);
   reqs_.erase(id);
 }

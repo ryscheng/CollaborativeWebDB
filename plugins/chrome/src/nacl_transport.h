@@ -51,6 +51,7 @@ class NaclTransportInstance : public pp::Instance {
     virtual void HandleMessage(const pp::Var& var_message);
     void Callback(int32_t result, int32_t id, int32_t* pres);
     void NewSocketCallback(int32_t result, int32_t id, bool from_res, int32_t* pres);
+    void ReadCallback(int32_t result, int32_t id, int32_t numBytes, int32_t* pres);
   private:
     Logger* log_;
     pp::CompletionCallbackFactory<NaclTransportInstance, ThreadSafeRefCount> factory_;
