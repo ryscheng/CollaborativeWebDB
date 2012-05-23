@@ -195,9 +195,6 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "stop"})
 
-
-      
-
 class MessageHandler(tornado.websocket.WebSocketHandler):
     waiters = dict()
     hashes = dict()
