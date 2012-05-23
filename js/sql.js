@@ -265,11 +265,17 @@ var database = {
         def: create,
         dirty: {}
       };
-      var rows = create.split('\n');
-      for (var i = 1; i < rows.length; i++) {
-        if (rows[i].trim().match(/(PRIMARY KEY|UNIQUE|FOREIGN KEY)/))
-            continue
-        var kv = rows[i].trim().match(/([\S]*)\s+([\S]*)/i);
+      // When this breaks, http://regexpal.com is useful for seeing what isn't matching.
+      var create_regexp = /^\s*create\s+(temp|temporary)?\s*table\s+(\w*\.)?(\w*)\s+\(((\s*(\w+)\s+(\S+)(\s+(PRIMARY|NOT|UNIQUE|CHECK|DEFAULT|COLLATE|REFERENCES)[^,\)]*)?)(,\s*(\w+)\s+(\S+)(\s+(PRIMARY|NOT|UNIQUE|CHECK|DEFAULT|COLLATE|REFERENCES)[^,\)]*)?)*?)(,\s+(PRIMARY|UNIQUE|CHECK|FOREIGN)([^,]|\(.*\))+)*\)\s*$/i;
+      var matches = create_regexp.exec(create);
+      if (!matches) {
+        Host.log("Unparsed table definition: " + create);
+        return null;
+      }
+      // column defs show up matches[4]
+      var columns = matches[4].split(",");
+      for (var i = 0; i < columns.length; i++) {
+        var kv = columns[i].trim().match(/^([\S]*)\s+([\S]*)/i);
         if (kv == null || kv.length < 3)
             continue;
         obj.colnames.push(kv[1]);
