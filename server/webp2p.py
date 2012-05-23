@@ -4,7 +4,7 @@
  Adapted from the tornado websocket chat demo.
 """
 
-import os, sys, inspect, time
+import os, sys, inspect, time, math
 this_folder = os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0])
 tornado_folder = os.path.join(this_folder, "tornado")
 if tornado_folder not in sys.path:
@@ -73,12 +73,18 @@ class SubHandler(tornado.web.RequestHandler):
         self.render("data.html")
 
 class EvalData():
+  startTime = None
+  endTime = None 
+  counts = dict()
+  times = dict()
   count = 0 
   time = 0
 
+  def __init__(self):
+    self.evalStartTime = time.time()
+
 class DataHandler(tornado.web.RequestHandler):
     pagesize = 30
-    stats = EvalData()
 
     def initialize(self):
         if os.access(options.data, os.W_OK):
@@ -90,10 +96,20 @@ class DataHandler(tornado.web.RequestHandler):
 
 
     def get(self):
+        # evaluation!
+        timeBin = None
+        stats = DataHandler.stats
         if EvalWSHandler.started:
-          DataHandler.stats.count += 1
+          stats.count += 1
           startTime = time.time()
+          timeBin = math.floor(startTime)
+          logging.info("timebin is %d" %(timeBin))
+          if (timeBin in stats.counts):
+            stats.counts[timeBin] += 1
+          else:
+            stats.counts[timeBin] = 1
 
+        # actual data handling
         q = urllib.unquote_plus(self.get_argument('q'))
         retval = {}
         if self.db:
@@ -109,15 +125,24 @@ class DataHandler(tornado.web.RequestHandler):
             retval['status'] = 'No Data Available'
 
         self.write(retval)
+
+        # evaluation!
         if EvalWSHandler.started:
           endTime = time.time()
           elapsed = endTime-startTime
-          DataHandler.stats.time += elapsed
-          logging.info("done with a get, count: %d, time: %f" % (DataHandler.stats.count, DataHandler.stats.time))
+          stats.time += elapsed
+          if (timeBin in stats.times):
+            stats.times[timeBin] += elapsed
+          else:
+            stats.times[timeBin] = elapsed
+
+          logging.info("done with a get, count: %d, time: %f, bincount: %d, bintime: %f" % (DataHandler.stats.count, DataHandler.stats.time, stats.counts[timeBin], stats.times[timeBin]))
                 
 class EvalWSHandler(tornado.websocket.WebSocketHandler):
   evaluators = dict();
   started = False
+
+  evaluationRuns = []
 
   def allow_draft76(self):
     # for iOS 5.0 Safari
@@ -146,12 +171,15 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
   @classmethod
   def start_evaluation(self):
     EvalWSHandler.started = True
+    DataHandler.stats = EvalData()
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "start"})
     
   @classmethod
   def stop_evaluation(self):
     EvalWSHandler.started = False
+    EvalWSHandler.evaluationRuns.append(DataHandler.stats)
+    DataHandler.stats = None
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "stop"})
 
