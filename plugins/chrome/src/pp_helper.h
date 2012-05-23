@@ -5,7 +5,7 @@
 
 //Based on <NaClSDK>/pepper_19/toolchain/linux_x86_newlib/x86_64-nacl/include/ppapi/c/pp_errors.h
 
-char const* pperrorstr(int32_t errornum) {
+char const* ppErrorToString(int32_t errornum) {
   switch(errornum) {
     case PP_OK:
       return "PP_OK";

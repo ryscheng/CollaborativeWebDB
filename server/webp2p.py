@@ -19,6 +19,7 @@ import tornado.options
 import tornado.web
 import tornado.websocket
 import os.path
+import urllib
 import uuid
 
 from tornado.options import define, options
@@ -61,27 +62,23 @@ class DataHandler(tornado.web.RequestHandler):
     pagesize = 30
 
     def initialize(self):
+        if os.access(options.data, os.W_OK):
+            logging.error("Database is mutable, chmod -w to fix.")
         if os.path.exists(options.data):
             self.db = sqlite3.connect(options.data)
         else:
             self.db = None
 
     def get(self):
-        # todo: validate table against known table names
-        # todo: support additional 'where' queries
-        table = self.get_argument('t');
-        offset = self.get_argument('o');
-        try:
-            offset = int(offset)
-        except ValueError:
-            offset = 0
+        q = urllib.unquote_plus(self.get_argument('q'))
         retval = {}
         if self.db:
             c = self.db.cursor()
             try:
-                retval['range'] = [offset, offset + self.pagesize]
-                retval['total'] = c.execute('SELECT COUNT(*) FROM %s' % table).fetchone()[0]
-                retval['rows'] = [row for row in c.execute('SELECT * FROM %s LIMIT %d, %d' % (table, offset, self.pagesize))]
+                c.execute(q)
+                retval['rows'] = c.fetchmany(DataHandler.pagesize)
+                cols = [col[0] for idx,col in enumerate(c.description)]
+                retval['cols'] = cols
             except Exception as e:
                 retval['status'] = e.__str__()
         else:

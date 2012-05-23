@@ -1,40 +1,53 @@
 var naclmodule = null;  // Global application object.
-var statusText = 'NO-STATUS';
+var contentScripts = new Object();
 init()
 
 function init() {
   console.log("WebP2P NaCl Transport init()");
   var listener = document.getElementById('nacl_listener');
+  chrome.extension.onConnect.addListener(onContentScriptConnect);
   listener.addEventListener('load', moduleDidLoad, true);
   listener.addEventListener('message', handleMessage, true);
 }
 
-// Indicate load success.
 function moduleDidLoad() {
-  updateStatus('SUCCESS');
-  naclmodule = document.getElementById('nacl_transport');
-  naclmodule.postMessage('LOADED');
-}
-
-// The 'message' event handler.  This handler is fired when the NaCl module
-// posts a message to the browser by calling PPB_Messaging.PostMessage()
-// (in C) or pp::Instance.PostMessage() (in C++).  This implementation
-// simply displays the content of the message in an alert panel.
-function handleMessage(message_event) {
-  console.log("from nacl: "+message_event.data);
-}
-
-// Set the global status message.  If the element with id 'statusField'
-// exists, then set its HTML to the status message as well.
-// opt_message The message test.  If this is null or undefined, then
-// attempt to set the element with id 'statusField' to the value of
-// |statusText|.
-function updateStatus(opt_message) {
-  if (opt_message)
-    statusText = opt_message;
   var statusField = document.getElementById('nacl_status_field');
   if (statusField) {
-    statusField.innerHTML = statusText;
+    statusField.innerHTML = 'SUCCESS';
+  }
+  naclmodule = document.getElementById('nacl_transport');
+}
+
+function handleMessage(message_event) {
+  console.log("from nacl: "+message_event.data);
+  var result = JSON.parse(message_event.data);
+  contentScripts[result.request.portname].port.postMessage(result);
+}
+
+function ContentScriptConnection(port) {
+  this.port = port;
+  this.onRead = function(socketEvent) {
+  }
+
+  this.onMessage = function(msg) {
+    msg.portname = port.name;
+    console.log("MSG:"+port.name+"::"+JSON.stringify(msg));
+    if (msg.command == COMMANDS.getpublicip) {
+      function parseDomForIp(dom) {
+        var ip = dom.split("IP Address: ")[1].split("</body>")[0];
+        port.postMessage({request: msg, result: ip});
+      }
+      $.get(GETIPURL, {}, parseDomForIp);
+    } else if (naclmodule == null) {
+      port.postMessage({request: msg, error: 'NaCl module not loaded'});
+    } else {
+      naclmodule.postMessage(JSON.stringify(msg));
+    }
   }
 }
 
+function onContentScriptConnect(port) {
+  console.log("New Content script: " + port.name);
+  contentScripts[port.name] = new ContentScriptConnection(port);
+  port.onMessage.addListener(contentScripts[port.name].onMessage);
+}

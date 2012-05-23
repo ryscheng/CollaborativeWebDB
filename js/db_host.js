@@ -7,11 +7,11 @@ var database = {
   completion_cbs: [],
   backing_cbs: [],
   status_cb: null,
-  exec: function(query, only_train, data_cb, completion_cb) {
+  exec: function(query, only_train, data_cb, completion_cb, page) {
     var i = database.c++ || 0;
     database.data_cbs[i] = data_cb;
     database.completion_cbs[i] = completion_cb;
-    database.worker.contentWindow.postMessage(JSON.stringify({'m':'exec', 'a':[query, i, only_train]}), "*");
+    database.worker.contentWindow.postMessage(JSON.stringify({'m':'exec', 'a':[query, i, only_train, page]}), "*");
   },
   backing: function(cb) {
     database.backing_cbs.push(cb);
@@ -40,7 +40,7 @@ var database = {
             delete database.data_cbs[id];
             database.completion_cbs[id](data['r']['ret']);
             delete database.completion_cbs[id];
-          } else {
+          } else if (data['r']['id'] !== undefined) {
             database.data_cbs[data['r']['id']](data['r']['data'], data['r']['err']);
           }
         } else if (data['m'] == 'q') {
@@ -49,8 +49,12 @@ var database = {
           for (var i = 0; i < qcb.length; i++) {
             qcb[i](data['r']);
           }
+        } else if (data['m'] == 'log') {
+          log.write(data['r']);
         } else if (data['m'] =='error') {
           database._err(data['r']);
+        } else if (data['m'] =='set') {
+          database[data['r'][0]] = data['r'][1];
         } else {
           database.status_cb && database.status_cb(data['r']);
         }
@@ -58,6 +62,7 @@ var database = {
         database._err(event.data);
       }
     } catch (e) {
+      console.log(e);
       database._err(e.stack);
     }
   },

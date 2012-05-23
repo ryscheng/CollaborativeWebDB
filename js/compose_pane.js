@@ -4,11 +4,12 @@ var compose_pane = {
     // initialization ends up with a different code path, and the status callbacks
     // are more interesting than the data / completion ones.
     database.status_cb = compose_pane.update_status;
-    database.exec("SELECT * FROM SQLITE_MASTER;", true, function() {}, function() {});
+    database.exec("SELECT * FROM SQLITE_MASTER;", true, compose_pane.finish_init, function() {});
     $('#compose .bar').css('width', "10%");
   },
   finish_init: function() {
     log.write("Database loaded, reading tables.");
+    database.status_cb = null;
     database.backing(compose_pane.render_sqlite);
   },
   render_sqlite: function(s) {
@@ -25,9 +26,9 @@ var compose_pane = {
     }
     if (tables == 0 || !s) {
       var result = document.createElement('div');
+      var msg = !s? "Initialization failed!  Check the log for details." : "No data loaded";
       $(result).addClass("alert")
-          .html("<strong>Warning!</strong> " +
-              (database.error || "Initialization failed!  Check the log for details."));
+          .html("<strong>Warning!</strong> " + (database.error || msg));
       $('#compose').append(result);
     }
   },
@@ -37,8 +38,6 @@ var compose_pane = {
       var ci = ++compose_pane._seen;
       var percent = 100 * ci / msg['n'];
       $('#compose .bar').css('width', percent + "%");
-    } else if (msg == "Database Initialized") {
-      window.setTimeout(compose_pane.finish_init, 1000);
     }
   },
   render_table: function(table) {

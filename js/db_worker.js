@@ -5,11 +5,27 @@ var functions = {
     var query = args[0];
     var id = args[1];
     var only_train = args[2];
+    var page = args[3];
+
+    // 2 messages will be sent: the first will contain data, the second return
+    // status.  When the execute call returns early, we save the return value
+    // in data_sent, and it is send later in the subsequent on_data call.
+    var data_sent = false;
     var on_data = function(data, err) {
       sendMessage({'m':'exec', 'r':{'id': id, 'data':data, 'err':err}});
+      if (data_sent) {
+        sendMessage({'m':'exec', 'r':data_sent});
+      } else {
+        data_sent = true;
+      }
     }
-    var ret = database.execute(query, on_data, only_train);
-    return {'id': id, 'ret': ret};
+    var ret = database.execute(query, on_data, only_train, page);
+    if (data_sent) {
+      return {'id': id, 'ret': ret};
+    } else {
+      data_sent = {'id': id, 'ret': ret};
+      return {};
+    }
   },
   q: function() {
     var t = {};
@@ -19,6 +35,18 @@ var functions = {
     }
     return t;
   }
+};
+
+var Host = {
+  prop: function(key, val) {
+    sendMessage({'m':'set','r':[key,val]});
+  },
+  log: function(msg) {
+    sendMessage({'m':'log','r':msg});
+  },
+  get_hash: function(hash, cb) {
+    cb(null);
+  },
 };
 
 addEventListener("message", function(event) {
