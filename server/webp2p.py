@@ -58,7 +58,8 @@ class EvaluationHandler(tornado.web.RequestHandler):
       else:
         if cmd == "start":
           logging.info("starting evaluation") 
-          EvalWSHandler.start_evaluation()
+          rc = EvalWSHandler.start_evaluation()
+          self.write(tornado.escape.json_encode(rc))
         elif cmd == "stop":
           logging.info("stopping evaluation")
           EvalWSHandler.stop_evaluation()
@@ -175,17 +176,22 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
 
   @classmethod
   def start_evaluation(self):
+    if EvalWSHandler.started:
+      # starting while started has no effect
+      return False
     EvalWSHandler.started = True
     DataHandler.stats = EvaluationHandler.newEvalStats()
     EvalWSHandler.evaluationRuns.append(DataHandler.stats)
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "start"})
+    return True
     
   @classmethod
   def stop_evaluation(self):
     EvalWSHandler.started = False
-    DataHandler.stats["endTime"] = time.time()
-    DataHandler.stats = None
+    if DataHandler.stats:
+      DataHandler.stats["endTime"] = time.time()
+      DataHandler.stats = None
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "stop"})
 
