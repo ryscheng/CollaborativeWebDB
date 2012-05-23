@@ -184,6 +184,7 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
   @classmethod
   def stop_evaluation(self):
     EvalWSHandler.started = False
+    DataHandler.stats["endTime"] = time.time()
     DataHandler.stats = None
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "stop"})
