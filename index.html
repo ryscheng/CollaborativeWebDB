@@ -38,6 +38,13 @@
           document.write('<' + '/script>');
         }
     </script>
+    {% if evaluation == True %}
+    <script type="text/javascript">
+      var url = '{{ static_url("js/evaluation.js") }}';
+      document.write('<script type="text/javascript" src="' + url + '">');
+      document.write('<' + '/script>');
+    </script>
+    {% end %}
     <!--[if lt IE 9]>
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->

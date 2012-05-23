@@ -37,7 +37,9 @@ class Application(tornado.web.Application):
             (r"/", MainHandler),
             (r"/data.html", SubHandler),
             (r"/message", MessageHandler),
-            (r"/data", DataHandler)
+            (r"/data", DataHandler),
+            (r"/evaluation", EvaluationHandler),
+            (r"/evalWS", EvalWSHandler)
         ]
         settings = dict(
             cookie_secret=base64.b64encode(uuid.uuid4().bytes + uuid.uuid4().bytes),
@@ -48,10 +50,14 @@ class Application(tornado.web.Application):
         )
         tornado.web.Application.__init__(self, handlers, **settings)
 
+class EvaluationHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render("index.html", evaluation=True)
+
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        self.render("index.html")
+        self.render("index.html", evaluation=False)
 
 class SubHandler(tornado.web.RequestHandler):
     def get(self):
@@ -86,6 +92,34 @@ class DataHandler(tornado.web.RequestHandler):
 
         self.write(retval)
                 
+class EvalWSHandler(tornado.websocket.WebSocketHandler):
+  evaluators = dict();
+  started = False
+
+  def allow_draft76(self):
+      # for iOS 5.0 Safari
+      return True
+    
+  def open(self):
+      self.id = 0
+  
+  def on_close(self):
+      pass
+      #any cleanup stuff?
+
+  def on_message(self, message):
+      logging.info("evalWS handler got message %r", message)
+      # do something with the message
+
+      parsed = tornado.escape.json_decode(message)
+      if "payload" in parsed:
+        if "command" in parsed["payload"]:
+          if parsed["payload"]["command"] == "start":
+            logging.info("...starting evaluation")
+          elif parsed["payload"]["command"] == "stop": 
+            logging.info("...stoping evaluation")
+
+      
 
 class MessageHandler(tornado.websocket.WebSocketHandler):
     waiters = dict()
