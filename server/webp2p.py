@@ -90,6 +90,7 @@ class SubHandler(tornado.web.RequestHandler):
 
 class DataHandler(tornado.web.RequestHandler):
     pagesize = 30
+    stats = None
 
     def initialize(self):
         if os.access(options.data, os.W_OK):
@@ -98,7 +99,6 @@ class DataHandler(tornado.web.RequestHandler):
             self.db = sqlite3.connect(options.data)
         else:
             self.db = None
-
 
     def get(self):
         # evaluation!

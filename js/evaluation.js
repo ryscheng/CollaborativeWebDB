@@ -1,5 +1,6 @@
 var evaluation = {
   socket: null,
+  started: false,
 
   write: function(obj) {
     if (!this.socket) {
@@ -8,8 +9,7 @@ var evaluation = {
     return this.socket.send(JSON.stringify({"payload": obj}));
   },
 
-  start: function() {
-    console.debug('creating websocket for eval');
+  start: function() { console.debug('creating websocket for eval');
     var url = "ws://" + location.host + "/evalWS";
     if (!window.WebSocket) {
       return false;
@@ -19,11 +19,33 @@ var evaluation = {
 
     var that = this;
     this.socket.onmessage = function(event) {
-      //do whatever we want to do when we get a message from the server... for now print it
+      var msg = JSON.parse(event.data);
+      if (msg.command == "start") {
+        that.startEvaluation();
+      }
+      else if (msg.command == "stop") {
+        that.stopEvaluation();
+      }
       console.debug('received evaluation message: ', event);
+
     }
     return true;
+  },
+
+  nextQuery: function() {
+    return "SELECT * FROM my_table";
+  },
+
+  startEvaluation: function() {
+    this.started = true;
+    console.debug('starting testing');
+  },
+
+  stopEvaluation: function() {
+    this.started = false;
+    console.debug('stoping testing');
   }
+
 }
 
 evaluation.start();
