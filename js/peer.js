@@ -25,10 +25,28 @@ var server = {
         that.subscribers[i](msg);
       }
 	}
+	database.listeners['get_hash'] = server.retrieve;
 	return true;
   },
   
-  lookup: function(key, result) {
+  retrieve: function(req, result) {
+    server.peers_for_hash(req, function(peers) {
+      if (!peers.length) {
+        result(null);
+      } else {
+        var p = node.get_connected(peers);
+        if (p) {
+          
+        } else {
+          
+        }
+        result(null);
+      }
+    });
+  },
+  
+  peers_for_hash: function(req, result) {
+    var key = req.hash;
     log.write("Looking up " + key);
     if(server.write({"event":"get", "key":key})) {
       if (server.waiters[key + ".cache"]) {
@@ -106,6 +124,9 @@ var node = {
       }
     }
     return (edge_num >= this.MAX_EDGES);
+  },
+  get_connected: function(peers) {
+    return false;
   },
   maybeConnect_:function(id) {
     network_pane.saw_node(id);

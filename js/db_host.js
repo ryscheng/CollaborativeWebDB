@@ -29,6 +29,7 @@ var database = {
       database.worker.onload = cb;
     }
   },
+  listeners: {},
   _msg: function(event) {
     try {
       console.log('message from db:' + event.data);
@@ -55,6 +56,11 @@ var database = {
           database._err(data['r']);
         } else if (data['m'] =='set') {
           database[data['r'][0]] = data['r'][1];
+        } else if (data['m'] in database.listeners) {
+          var id = data['id'];
+          database.listeners[data['m']](data['r'], function(arg) {
+            database.worker.contentWindow.postMessage(JSON.stringify({'cb':id,'r':arg}), "*");
+          });
         } else {
           database.status_cb && database.status_cb(data['r']);
         }

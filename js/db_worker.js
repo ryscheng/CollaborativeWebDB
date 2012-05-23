@@ -38,6 +38,15 @@ var functions = {
 };
 
 var Host = {
+  cbs: function(cb) {
+    if (!Host._cbid) {
+      Host._cbid = 0;
+      Host._cbr = {};
+    }
+    var id = Host._cbid++;
+    Host._cbr[id] = function(arg) {delete Host._cbr[id]; cb(arg) };
+    return id;
+  },
   prop: function(key, val) {
     sendMessage({'m':'set','r':[key,val]});
   },
@@ -45,8 +54,8 @@ var Host = {
     sendMessage({'m':'log','r':msg});
   },
   get_hash: function(hash, cb) {
-    cb(null);
-  },
+    sendMessage({'m':'get_hash','r':{'hash':hash}, 'id':Host.cbs(cb)});
+  }
 };
 
 addEventListener("message", function(event) {
@@ -56,6 +65,8 @@ addEventListener("message", function(event) {
       var func = functions[data['m']];
       var resp = func(data['a']);
       sendMessage({'m':data['m'], 'r':resp});
+    } else if (data && data['cb'] !== undefined && data['r'] !== undefined) {
+      Host._cbr[data['cb']](data['r']);
     } else {
       sendMessage({'m':'error', 'r': event.data});
     }
