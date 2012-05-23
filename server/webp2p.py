@@ -4,7 +4,7 @@
  Adapted from the tornado websocket chat demo.
 """
 
-import os, sys, inspect
+import os, sys, inspect, time
 this_folder = os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0])
 tornado_folder = os.path.join(this_folder, "tornado")
 if tornado_folder not in sys.path:
@@ -72,9 +72,13 @@ class SubHandler(tornado.web.RequestHandler):
     def get(self):
         self.render("data.html")
 
+class EvalData():
+  count = 0 
+  time = 0
 
 class DataHandler(tornado.web.RequestHandler):
     pagesize = 30
+    stats = EvalData()
 
     def initialize(self):
         if os.access(options.data, os.W_OK):
@@ -84,7 +88,12 @@ class DataHandler(tornado.web.RequestHandler):
         else:
             self.db = None
 
+
     def get(self):
+        if EvalWSHandler.started:
+          DataHandler.stats.count += 1
+          startTime = time.time()
+
         q = urllib.unquote_plus(self.get_argument('q'))
         retval = {}
         if self.db:
@@ -100,6 +109,11 @@ class DataHandler(tornado.web.RequestHandler):
             retval['status'] = 'No Data Available'
 
         self.write(retval)
+        if EvalWSHandler.started:
+          endTime = time.time()
+          elapsed = endTime-startTime
+          DataHandler.stats.time += elapsed
+          logging.info("done with a get, count: %d, time: %f" % (DataHandler.stats.count, DataHandler.stats.time))
                 
 class EvalWSHandler(tornado.websocket.WebSocketHandler):
   evaluators = dict();
@@ -131,11 +145,13 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
 
   @classmethod
   def start_evaluation(self):
+    EvalWSHandler.started = True
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "start"})
     
   @classmethod
   def stop_evaluation(self):
+    EvalWSHandler.started = False
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "stop"})
 
