@@ -9,7 +9,7 @@ function init() {
 }
 
 function receiveFromPage(event){
-  if (event.data.to == "extension") {
+  if ((typeof event.data.to !== 'undefined') && (event.data.to == "extension")) {
     port.postMessage(event.data.msg);
   }
 }
