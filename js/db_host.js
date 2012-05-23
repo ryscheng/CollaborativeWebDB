@@ -40,7 +40,7 @@ var database = {
             delete database.data_cbs[id];
             database.completion_cbs[id](data['r']['ret']);
             delete database.completion_cbs[id];
-          } else {
+          } else if (data['r']['id'] !== undefined) {
             database.data_cbs[data['r']['id']](data['r']['data'], data['r']['err']);
           }
         } else if (data['m'] == 'q') {

@@ -1,37 +1,15 @@
 var database = {
   page_width: 30,
   source: null,
+  data: {},
   handle: null,
   _training: false,
   _blocked: [],
   
   execute: function(query, callback, only_train, page) {
-    // paging
-    if (page && !isNaN(page) && query.match(/^SELECT/i)) {
-      var pageSize = 10;
-      var qLimit = query.match(/LIMIT (\d+),?\s+?(\d+)?/);
-      
-      // find offset into results from which we will return
-      var offset = 0;
-      if (qLimit && qLimit[2]) {
-        offset = parseInt(qLimit[1]);
-      }
-      var pageOffset = pageSize * (page-1);
-      offset += pageOffset;
-
-      var limit = ' LIMIT '+offset+', '+pageSize;
-      
-      if (qLimit === null) { // no limit at end of query
-        query = query.replace(/;/, limit);
-      }
-      else {
-        query = query.replace(/ LIMIT.+;/, limit);
-      }
-    } 
-
     if (database._blocked !== false) {
       database._blocked.push(function() {
-        database.execute(query, callback);
+        database.execute(query, callback, only_train, page);
       });
       if (database.source == null)
         return database.init();
@@ -41,89 +19,113 @@ var database = {
     if (!query.length) {
       return callback(null, "No Query");
     }
-    database._training = true;
-    try {
-      return database.handle.exec(query, database._cost.bind(this, query, callback, only_train));
-    } catch(e) {
+
+    if (query.match(/^SELECT/i)) {
+      // paging
+      var query_p1 = query;
+      var query_pn = query;
+      if (page && !isNaN(page)) {
+        query_p1 = database._pageQuery(query, 1);
+        query_pn = database._pageQuery(query, page);
+      }
       database._reset();
-      callback(null, e);
-      return;
+      database._training = true;
+      try {
+        return database.handle.exec(query_p1, database._cost.bind(this, query_pn, callback, only_train, page));
+      } catch(e) {
+        database._reset();
+        callback(null, e.stack);
+        return 1;
+      }
+    } else {
+      try {
+        return database.handle.exec(query, callback);
+      } catch(e) {
+        database._reset();
+        callback(null, e);
+        return 1;
+      }
     }
   },
-  
-  _cost: function(query, callback, only_train, answer) {
-    callback(answer, null);
-  /*
-    var result_cost = 0;
-    var table_cost = 0;
-    var row = 0;
-    enumerable.take(5).each(function(i) {row++});
-    if (row < 5) {
-      result_cost = 1;
+  _pageQuery: function(query, page) {
+      var qLimit = query.match(/LIMIT (\d+),?\s+?(\d+)?;/i);
+      
+      // find offset into results from which we will return
+      var offset = 0;
+      if (qLimit && qLimit[2]) {
+        offset = parseInt(qLimit[1]);
+      }
+      var pageOffset = database.page_width * (page - 1);
+      offset += pageOffset;
+
+      var limit = ' LIMIT ' + offset + ', ' + database.page_width + ';';
+      
+      if (qLimit === null) { // no limit at end of query
+        query = query.replace(/;/, limit);
+      }
+      else {
+        query = query.replace(/ LIMIT[\W]*;/i, limit);
+      }
+      return query;
+  },
+  _cost: function(query, callback, only_train, page, answer) {
+    if (only_train) {
+        database._reset();
+        return callback(answer);
     }
+
+    var table_cost = 0;
     for (var i in database.source) {
       var t = database.source[i];
       var indicies = 0;
       for (var d in t.dirty) {
         indicies++;
       }
-      t._access_mode = indicies;
-      if (indicies > 0 && indicies <= 6) {
+      if (indicies > 0 && indicies <= database.page_width) {
         table_cost += 1;
-      } else if (indicies > 6) {
+      } else if (indicies > 0) {
         table_cost += 5;
       }
     }
-    row = 0;
-    enumerable.each(function(i) {row++});
-    if (row > 10) {
-      result_cost += 5;
-    } else {
-      result_cost += 1;
-    }
+    Host.log("Query estimated to cost " + table_cost + " pages");
     
-    var semaphore = 0;
-    var continuation = function() {
-      semaphore--;
-      if (semaphore == 0) {
-        // Tables loaded.
-        database._reset();
-        try {
-          var q = new jsinq.Query(query);
-          var e = q.getQueryFunction()(database.source);
-          callback(e, null);
-        } catch (err) {
-          callback(null, err);
+    if (table_cost <= 4) { // Store base tables
+      var n = 0;
+      var continuation = function() {
+        if (--n == 0) {
+          database._reset();
+          database.handle.exec(query, callback);
         }
-      }
-    }
+      };
 
-    console.log("r: " + result_cost + "t:" + table_cost);
-    if (result_cost < table_cost) {
-      // Store result only.
-      log.warn("not implemented :-/");
-    } else {
-      // Store tables.
       for (var i in database.source) {
         var t = database.source[i];
+        var indicies = 0;
+        for (var d in t.dirty) {
+          indicies++;
+        }
 
-        if (t._access_mode > 0 && t._access_mode <= 6) {
-          semaphore++;
-          console.log('page needed from ' + i);
-          database.load_page(database.get_page_key(i, 0), function(page) {
-            this.store(page);
-            continuation();
-          }.bind(t));
-        } else if (t._access_mode > 0) {
-          semaphore++;
-          console.log('full table needed from ' + i);
-          database.stream_table(i, database.source[i].store, continuation);
+        if (indicies > 0) {
+          n++;
+          database.load_page(database.get_table_page_key(i, database.page_width * (page - 1)), continuation);
         }
       }
+    } else { // Directly load results.
+      var key = database.get_complex_page_key(query);
+      database.load_page(key, function() {
+        var result = database._get(key);
+        var cols = result['cols'];
+        var rows = result['rows'];
+        for (var r = 0; r < rows.length; r++) {
+          for (var c = 0; c < rows[r].length; c++) {
+            rows[r][c] = {'column':cols[c], 'value':rows[r][c]};
+          }
+        }
+        callback(rows, null);
+      });
     }
-    */
   },
-  
+    
   _finishSetup: function() {
     var setup = "";
     for (var table in database.source) {
@@ -148,24 +150,42 @@ var database = {
     }
   },
 
-  get_page_key: function(table, offset) {
-    return {"table": table,
-            "offset": offset,
+  get_table_page_key: function(table, offset) {
+    var q = "SELECT * FROM " + table + " limit " + offset + ",30;";
+    return {"query": q,
+            "table": table,
             "hash": table + "." + offset};
+  },
+  
+  get_complex_page_key: function(query) {
+    return {"query": query,
+            "hash": CryptoJS.MD5(query.trim())};
+  },
+  
+  _get: function(key) {
+    return database.data[key.hash] || null;
+  },
+  
+  _set: function(key, page) {
+    database.data[key.hash] = page;
   },
 
   load_page: function(key, callback) {
-    if (database.source[key.table] && database.source[key.table][key.hash]) {
+    if (database._get(key)) {
         return callback();
     }
 
-    //server.lookup(key.hash, function(peers) {
-    //    if (!peers.length) {
-            database.load_from_server(key, callback);
-    //    } else {
-    //        console.log('would get from peers');
-    //    }
-    //});
+    Host.get_hash(key.hash, function(page) {
+        if (!page) {
+            database.load_from_server(key, function(p) {
+                database._set(key, p);
+                callback();
+            });
+        } else {
+            database._set(key, page);
+            callback();
+        }
+    });
   },
   
   ajax: {
@@ -197,8 +217,7 @@ var database = {
   },
 
   load_from_server: function(key, callback) {
-    var q = "SELECT * FROM " + key['table'] + " limit " + key['offset'] + ",30;";
-    database.ajax.asynchronous("/data?q=" + encodeURIComponent(q), function(r) {
+    database.ajax.asynchronous("/data?q=" + encodeURIComponent(key['query']), function(r) {
       if (r.readyState == 4) {
         var actual_data = JSON.parse(r.responseText);
         callback(actual_data);
@@ -209,8 +228,10 @@ var database = {
   stream_table: function(table, callback, and_then, offset) {
     if (!offset)
       offset = 0;
-    database.load_page(database.get_page_key(table, offset), function(data) {
+    var key = database.get_table_page_key(table, offset);
+    database.load_page(key, function() {
       var more = true;
+      var data = database._get(key);
       if (data['rows'] && data['rows'].length == database.page_width) {
         database.stream_table(table, callback, and_then, offset + database.page_width);
       } else {
@@ -242,7 +263,7 @@ var database = {
         colnames: [],
         types: [],
         def: create,
-        pages: {}
+        dirty: {}
       };
       var rows = create.split('\n');
       for (var i = 1; i < rows.length; i++) {
@@ -294,8 +315,9 @@ var database = {
           return callback([], 0);
         }
         
-        if (database._training || true) {
-          if (idx >= 10) {
+        if (database._training) {
+          table.dirty[idx] = true;
+          if (idx >= 2*database.page_width) {
             return callback([], 0);
           }
           var row = [];
@@ -314,8 +336,11 @@ var database = {
           }
           return callback(table.types, row, 1 /* will return sync */);
         } else {
-          //TODO
-          return;
+          var remainder = idx % database.page_width;
+          var page_offset = idx - remainder;
+          var page = database._get(database.get_table_page_key(table.name, page_offset));
+          var row = page['rows'][remainder];
+          return callback(table.types, row, 1);
         }
     };
 

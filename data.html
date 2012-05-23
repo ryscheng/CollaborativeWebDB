@@ -11,6 +11,7 @@
           return str.match(/\"(.*)\"/)[1];
         }
         var scripts = ['{{ static_url("js/db_worker.js") }}',
+            '{{ static_url("js/md5.js") }}',
             '{{ static_url("js/sql.js") }}',
             '{{ static_url("js/sqlite.js") }}'];
         for (var i = 0; i < scripts.length; i++) {

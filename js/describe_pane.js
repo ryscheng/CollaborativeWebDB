@@ -10,7 +10,6 @@ describe_pane.init = function() {
       query = "explain " + query;
     }
     var pane = new sql_pane(query);
-    console.log($('a[href=#result_' + pane.id+']').children());
     $('a[href=#result_' + pane.id+']')[0].childNodes[0].data = "Explain ";
     sql_pane.panes.push(pane);
     return false;
