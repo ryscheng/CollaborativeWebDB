@@ -31,6 +31,7 @@
             '{{ static_url("js/describe_pane.js") }}',
             '{{ static_url("js/log.js") }}',
             '{{ static_url("js/peer.js") }}',
+{% if evaluation == True %}'{{ static_url("js/evaluation.js") }}',{% end %}
             '{{ static_url("js/webp2p.js") }}'];
         for (var i = 0; i < scripts.length; i++) {
           var url = getUrl(scripts[i]);
@@ -38,13 +39,6 @@
           document.write('<' + '/script>');
         }
     </script>
-    {% if evaluation == True %}
-    <script type="text/javascript">
-      var url = '{{ static_url("js/evaluation.js") }}';
-      document.write('<script type="text/javascript" src="' + url + '">');
-      document.write('<' + '/script>');
-    </script>
-    {% end %}
     <!--[if lt IE 9]>
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
