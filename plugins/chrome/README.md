@@ -15,5 +15,18 @@ In order to get it running, do the following:
 
 Run
 ---
-In order to run, start the server, then navigate to http://localhost:5103
-  python scripts/httpd.py
+In order to get it running,
+  Install unpacked extension in Google Chrome
+  Note the <extensionid>
+  Close Google Chrome
+  Reopen Google Chrome with the right flags
+    --enable-nacl 
+    --allow-nacl-socket-api="<extensionid>" 
+    --enable-media-stream 
+    --enable-experimental-extension-apis 
+    For hints, look at openchrome.sh
+  Run the python script
+    python httpd.py
+  Open http://localhost:5103
+  Check the javascript console for both the background page and opened page
+
