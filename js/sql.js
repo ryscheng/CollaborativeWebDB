@@ -90,7 +90,7 @@ var database = {
     Host.log("Query estimated to cost " + table_cost + " pages");
     
     if (table_cost <= 4) { // Store base tables
-      var n = 0;
+      var n = 1;
       var continuation = function() {
         if (--n == 0) {
           database._reset();
@@ -110,6 +110,7 @@ var database = {
           database.load_page(database.get_table_page_key(i, database.page_width * (page - 1)), continuation);
         }
       }
+      continuation();
     } else { // Directly load results.
       var key = database.get_complex_page_key(query);
       database.load_page(key, function() {
