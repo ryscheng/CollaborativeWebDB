@@ -20,13 +20,10 @@ var evaluation = {
     var that = this;
     this.socket.onmessage = function(event) {
       //do whatever we want to do when we get a message from the server... for now print it
-      console.debug(event);
+      console.debug('received evaluation message: ', event);
     }
     return true;
   }
 }
 
 evaluation.start();
-setTimeout(function() {
-  evaluation.write({"command": "start"});
-}, 8000);

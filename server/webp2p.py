@@ -52,7 +52,16 @@ class Application(tornado.web.Application):
 
 class EvaluationHandler(tornado.web.RequestHandler):
     def get(self):
+      cmd = self.get_argument("command", default=None)
+      if not cmd:
         self.render("index.html", evaluation=True)
+      else:
+        if cmd == "start":
+          logging.info("starting evaluation") 
+          EvalWSHandler.start_evaluation()
+        elif cmd == "stop":
+          logging.info("stopping evaluation")
+          EvalWSHandler.stop_evaluation()
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -97,27 +106,39 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
   started = False
 
   def allow_draft76(self):
-      # for iOS 5.0 Safari
-      return True
+    # for iOS 5.0 Safari
+    return True
     
   def open(self):
-      self.id = 0
+    self.id = uuid.uuid4()
+    EvalWSHandler.evaluators[self.id] = self
   
   def on_close(self):
-      pass
-      #any cleanup stuff?
+    if self.id in EvalWSHandler.evaluators:
+      del EvalWSHandler.evaluators[self.id]
 
   def on_message(self, message):
-      logging.info("evalWS handler got message %r", message)
-      # do something with the message
+    logging.info("evalWS handler got message %r", message)
+    # do something with the message
 
-      parsed = tornado.escape.json_decode(message)
-      if "payload" in parsed:
-        if "command" in parsed["payload"]:
-          if parsed["payload"]["command"] == "start":
-            logging.info("...starting evaluation")
-          elif parsed["payload"]["command"] == "stop": 
-            logging.info("...stoping evaluation")
+    parsed = tornado.escape.json_decode(message)
+    if "payload" in parsed:
+      if "command" in parsed["payload"]:
+        if parsed["payload"]["command"] == "start":
+          logging.info("...starting evaluation")
+        elif parsed["payload"]["command"] == "stop": 
+          logging.info("...stoping evaluation")
+
+  @classmethod
+  def start_evaluation(self):
+    for e in EvalWSHandler.evaluators:
+      EvalWSHandler.evaluators[e].write_message({"command": "start"})
+    
+  @classmethod
+  def stop_evaluation(self):
+    for e in EvalWSHandler.evaluators:
+      EvalWSHandler.evaluators[e].write_message({"command": "stop"})
+
 
       
 
