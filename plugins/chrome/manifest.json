@@ -8,32 +8,15 @@
   "icons": {
     "128": "img/icon_128.png"
   },
-  //"browser_action": {},
   "background": {
     "page": "background.html"
   },
-  "content_scripts": [
-    {
-      //"matches": ["http://*/*, https://*/*"],
-      "matches": ["<all_urls>"],
-      "js": ["js/contentscript.js"]
-    }
+  "web_accessible_resources": [
+    "load.html"
   ],
   "permissions": [
-    "<all_urls>",
+    "experimental",
     "tabs",
-    "unlimitedStorage",
-    "experimental"
+    "<all_urls>"
   ]
-
-  /**
-  "app": {
-    "urls": [
-      "http://bumping.cs.washington.edu:5103/"
-    ],
-    "launch": {
-      "web_url": "http://bumping.cs.washington.edu:5103/nacl_test.html"
-    }
-  }
-  **/
 }
