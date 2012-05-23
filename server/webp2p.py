@@ -62,6 +62,22 @@ class EvaluationHandler(tornado.web.RequestHandler):
         elif cmd == "stop":
           logging.info("stopping evaluation")
           EvalWSHandler.stop_evaluation()
+        elif cmd == "stats":
+          logging.info("sending stats")
+          jsonStats = tornado.escape.json_encode(EvalWSHandler.evaluationRuns)
+          self.write(jsonStats)
+
+    @classmethod
+    def newEvalStats(self):
+      return {
+        "startTime": time.time(),
+        "endTime": None,
+        "counts": dict(),
+        "times": dict(),
+        "count": 0,
+        "time": 0,
+      }
+
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -71,17 +87,6 @@ class MainHandler(tornado.web.RequestHandler):
 class SubHandler(tornado.web.RequestHandler):
     def get(self):
         self.render("data.html")
-
-class EvalData():
-  startTime = None
-  endTime = None 
-  counts = dict()
-  times = dict()
-  count = 0 
-  time = 0
-
-  def __init__(self):
-    self.evalStartTime = time.time()
 
 class DataHandler(tornado.web.RequestHandler):
     pagesize = 30
@@ -100,14 +105,14 @@ class DataHandler(tornado.web.RequestHandler):
         timeBin = None
         stats = DataHandler.stats
         if EvalWSHandler.started:
-          stats.count += 1
+          stats["count"] += 1
           startTime = time.time()
           timeBin = math.floor(startTime)
           logging.info("timebin is %d" %(timeBin))
-          if (timeBin in stats.counts):
-            stats.counts[timeBin] += 1
+          if (timeBin in stats["counts"]):
+            stats["counts"][timeBin] += 1
           else:
-            stats.counts[timeBin] = 1
+            stats["counts"][timeBin] = 1
 
         # actual data handling
         q = urllib.unquote_plus(self.get_argument('q'))
@@ -130,13 +135,13 @@ class DataHandler(tornado.web.RequestHandler):
         if EvalWSHandler.started:
           endTime = time.time()
           elapsed = endTime-startTime
-          stats.time += elapsed
-          if (timeBin in stats.times):
-            stats.times[timeBin] += elapsed
+          stats["time"] += elapsed
+          if (timeBin in stats["times"]):
+            stats["times"][timeBin] += elapsed
           else:
-            stats.times[timeBin] = elapsed
+            stats["times"][timeBin] = elapsed
 
-          logging.info("done with a get, count: %d, time: %f, bincount: %d, bintime: %f" % (DataHandler.stats.count, DataHandler.stats.time, stats.counts[timeBin], stats.times[timeBin]))
+          logging.info("done with a get, count: %d, time: %f, bincount: %d, bintime: %f" % (stats["count"], stats["time"], stats["counts"][timeBin], stats["times"][timeBin]))
                 
 class EvalWSHandler(tornado.websocket.WebSocketHandler):
   evaluators = dict();
@@ -171,14 +176,14 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
   @classmethod
   def start_evaluation(self):
     EvalWSHandler.started = True
-    DataHandler.stats = EvalData()
+    DataHandler.stats = EvaluationHandler.newEvalStats()
+    EvalWSHandler.evaluationRuns.append(DataHandler.stats)
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "start"})
     
   @classmethod
   def stop_evaluation(self):
     EvalWSHandler.started = False
-    EvalWSHandler.evaluationRuns.append(DataHandler.stats)
     DataHandler.stats = None
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "stop"})
@@ -190,6 +195,7 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
     waiters = dict()
     hashes = dict()
 
+    
     def allow_draft76(self):
         # for iOS 5.0 Safari
         return True
