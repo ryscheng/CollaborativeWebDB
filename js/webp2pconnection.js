@@ -33,7 +33,7 @@ var WebP2PConnection = function(id) {
 
   this._cbid = 0;
   this._cbr = {};
-  window.addEventListener("message", this._receiveCommand, false);
+  window.addEventListener("message", this._receiveCommand.bind(this), false);
 };
 
 WebP2PConnection.prototype.getId = function() {
@@ -67,6 +67,10 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
       this._createServerSocket(function(msg) {
         if (msg.result == "PP_OK") {
           this._listen(WebP2PConnectionSettings.DEFAULT_PORT, function(msg) {
+            if (msg.result != "PP_OK") {
+              this._transition(WebP2PConnectionState.STOPPED);
+              return;
+            }
             this._transition(WebP2PConnectionState.LISTENING);
             for (var i = 0; i < this._onListen.length; i++) {
               this._onListen[i]();
@@ -253,7 +257,9 @@ WebP2PConnection.prototype._sendCommand = function(msg, cb) {
 WebP2PConnection.prototype._receiveCommand = function(event) {
   if (event.data && event.data.to && event.data.to == "page" &&
       event.data.msg.request.peer == this.sid) {
-    this._cbr[event.data.msg.request.id](event.data.msg);
-    delete this._cbr[event.data.msg.request.id];
+    if (this._cbr[event.data.msg.request.id] && typeof this._cbr[event.data.msg.request.id] == 'function') {
+      this._cbr[event.data.msg.request.id](event.data.msg);
+      delete this._cbr[event.data.msg.request.id];
+    } // messages do duplicate, it appears?
   }
 };
