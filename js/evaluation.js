@@ -68,7 +68,9 @@ var evaluation = {
       count: 0,
       time: 0,
       counts: {},
-      times: {}
+      times: {},
+      peerContacts: 0,
+      peers: {},
     };
     // convert to seconds
     this.stats.startTime = (new Date().getTime()) / 1000;
@@ -139,7 +141,15 @@ var evaluation = {
 
       this.runQuery();
     }
+  },
+  
+  countPeer: function(peer) {
+    if (this.started && this.stats) {
+      this.stats.peerContacts++;
+      
+    }
   }
+
 
 }
 

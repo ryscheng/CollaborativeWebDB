@@ -119,7 +119,8 @@ class DataHandler(tornado.web.RequestHandler):
             stats["counts"][timeBin] = 1
 
         # actual data handling
-        q = urllib.unquote_plus(self.get_argument('q'))
+        q = urllib.unquote(self.get_argument('q'))
+        logging.info(q)
         retval = {}
         if self.db:
             c = self.db.cursor()
