@@ -2,7 +2,8 @@ var evaluation = {
   socket: null,
   started: false,
   myTableCreated: false, 
-
+  
+  binSize: 5, // bin size in seconds of timeseries 
   stats: {},
 
   write: function(obj) {
@@ -12,13 +13,14 @@ var evaluation = {
     return this.socket.send(JSON.stringify({"payload": obj}));
   },
 
-  start: function() { console.debug('creating websocket for eval');
+  start: function() { 
+    //console.debug('creating websocket for eval');
     var url = "ws://" + location.host + "/evalWS";
     if (!window.WebSocket) {
       return false;
     }
     this.socket = new WebSocket(url);
-    console.debug(this.socket);
+    //console.debug(this.socket);
 
     var that = this;
     this.socket.onmessage = function(event) {
@@ -29,7 +31,7 @@ var evaluation = {
       else if (msg.command == "stop") {
         that.stopEvaluation();
       }
-      console.debug('received evaluation message: ', event);
+      //console.debug('received evaluation message: ', event);
 
     }
     return true;
@@ -73,8 +75,9 @@ var evaluation = {
   stopEvaluation: function() {
     this.started = false;
     console.debug('stoping testing');
-    
-    // report some information back to the server
+
+    // report stats back to server
+    this.socket.send(JSON.stringify(this.stats));
   },
 
   runQuery: function() {
@@ -82,9 +85,14 @@ var evaluation = {
       return; // cut off the execution
     }
     var query = this.nextQuery();
+    if (query == null) {
+      this.stopEvaluation();
+      return;
+    }
     this.stats.count++;
     this.startTime = new Date().getTime();
-    database.exec(query, false, this.data_cb, this.completion_cb, 1);
+    database.exec(query, false, this.data_cb.bind(this), 
+                                this.completion_cb.bind(this), 1);
   },
 
   data_cb: function(data, error) {
