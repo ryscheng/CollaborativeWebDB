@@ -94,6 +94,7 @@ var evaluation = {
       this.stopEvaluation();
       return;
     }
+    this.queryStartTime = new Date().getTime();
     database.exec(query, false, this.data_cb.bind(this), 
                                 this.completion_cb.bind(this), 1);
   },
@@ -125,7 +126,6 @@ var evaluation = {
         this.stats.times[timeBin] = elapsed;
       }
       this.stats.count++;
-      this.queryStartTime = new Date().getTime();
       if (this.stats.counts[timeBin]) {
         this.stats.counts[timeBin]++;
       }
