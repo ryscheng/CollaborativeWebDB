@@ -2,7 +2,8 @@ var evaluation = {
   socket: null,
   started: false,
   myTableCreated: false, 
-
+  
+  binSize: 5, // bin size in seconds of timeseries 
   stats: {},
 
   write: function(obj) {
@@ -74,8 +75,9 @@ var evaluation = {
   stopEvaluation: function() {
     this.started = false;
     console.debug('stoping testing');
-    
-    // report some information back to the server
+
+    // report stats back to server
+    this.socket.send(JSON.stringify(this.stats));
   },
 
   runQuery: function() {
@@ -83,6 +85,10 @@ var evaluation = {
       return; // cut off the execution
     }
     var query = this.nextQuery();
+    if (query == null) {
+      this.stopEvaluation();
+      return;
+    }
     this.stats.count++;
     this.startTime = new Date().getTime();
     database.exec(query, false, this.data_cb.bind(this), 

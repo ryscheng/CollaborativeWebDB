@@ -167,12 +167,11 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
     # do something with the message
 
     parsed = tornado.escape.json_decode(message)
-    if "payload" in parsed:
-      if "command" in parsed["payload"]:
-        if parsed["payload"]["command"] == "start":
-          logging.info("...starting evaluation")
-        elif parsed["payload"]["command"] == "stop": 
-          logging.info("...stoping evaluation")
+    if "count" in parsed:
+      logging.info("count: %d" % (parsed["count"]))
+    if "time" in parsed:
+      logging.info("time: %f" % (parsed["time"]))
+
 
   @classmethod
   def start_evaluation(self):
