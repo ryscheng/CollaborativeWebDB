@@ -160,7 +160,7 @@ var database = {
   
   get_complex_page_key: function(query) {
     return {"query": query,
-            "hash": CryptoJS.MD5(query.trim())};
+            "hash": CryptoJS.MD5(query.trim()).toString()};
   },
   
   _get: function(key) {
