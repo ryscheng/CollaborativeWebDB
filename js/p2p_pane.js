@@ -38,12 +38,20 @@ var p2p_pane = {
         req_fr.src = addr;
         req_fr.style.display='none';
         document.body.appendChild(req_fr);
-        $('#p2p')[0].innerHTML = "<p>Extension Communication Log</p><pre id='p2plog'></pre>";
-        window.addEventListener('message', p2p_pane.msgTracker, false);
+        req_fr.addEventListener('load', function() {
+            $('#p2p')[0].innerHTML = "<p>Extension Communication Log</p><pre id='p2plog'></pre>";
+            window.addEventListener('message', p2p_pane.msgTracker, false);
+
+            // Let the extension respond, then restart the server.
+            window.setTimeout(function() {
+              _WebP2PServer.state = 0;
+              _WebP2PServer.connect();
+            }, 10);
+        }, false);
     },
     msgTracker: function(evt) {
       if (evt.data && evt.data.to) {
-        $('#p2plog')[0].innerHTML += '\n' + JSON.stringify(evt.data).substr(0,80);
+        $('#p2plog')[0].innerHTML += '\n' + JSON.stringify(evt.data);
       }
     }
 };
