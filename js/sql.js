@@ -22,14 +22,16 @@ var database = {
 
     if (query.match(/^SELECT/i)) {
       // paging
+      var query_p1 = query;
+      var query_pn = query;
       if (page && !isNaN(page)) {
-        var query_page1 = database._pageQuery(query, 1);
-        var query_current = database._pageQuery(query, page);
+        query_p1 = database._pageQuery(query, 1);
+        query_pn = database._pageQuery(query, page);
       }
       database._reset();
       database._training = true;
       try {
-        return database.handle.exec(query_page1, database._cost.bind(this, query_current, callback, only_train));
+        return database.handle.exec(query_p1, database._cost.bind(this, query_pn, callback, only_train, page));
       } catch(e) {
         database._reset();
         callback(null, e.stack);
@@ -66,7 +68,7 @@ var database = {
       }
       return query;
   },
-  _cost: function(query, callback, only_train, answer) {
+  _cost: function(query, callback, only_train, page, answer) {
     if (only_train) {
         database._reset();
         return callback(answer);
@@ -105,14 +107,13 @@ var database = {
 
         if (indicies > 0) {
           n++;
-          database.load_page(database.get_table_page_key(i, 0), continuation);
+          database.load_page(database.get_table_page_key(i, database.page_width * (page - 1)), continuation);
         }
       }
     } else { // Directly load results.
       var key = database.get_complex_page_key(query);
       database.load_page(key, function() {
         var result = database._get(key);
-console.log('result get:' + result);        
         var cols = result['cols'];
         var rows = result['rows'];
         for (var r = 0; r < rows.length; r++) {
@@ -164,20 +165,24 @@ console.log('result get:' + result);
   _get: function(key) {
     return database.data[key.hash] || null;
   },
+  
+  _set: function(key, page) {
+    database.data[key.hash] = page;
+  },
 
   load_page: function(key, callback) {
-    if (database.data[key.hash]) {
+    if (database._get(key)) {
         return callback();
     }
 
     Host.get_hash(key.hash, function(page) {
         if (!page) {
             database.load_from_server(key, function(p) {
-                database.data[key.hash] = p;
+                database._set(key, p);
                 callback();
             });
         } else {
-            database.data[key.hash] = page;
+            database._set(key, page);
             callback();
         }
     });
@@ -310,7 +315,7 @@ console.log('result get:' + result);
           return callback([], 0);
         }
         
-        if (database._training || true) {
+        if (database._training) {
           table.dirty[idx] = true;
           if (idx >= 2*database.page_width) {
             return callback([], 0);
@@ -331,8 +336,11 @@ console.log('result get:' + result);
           }
           return callback(table.types, row, 1 /* will return sync */);
         } else {
-          //TODO
-          return;
+          var remainder = idx % database.page_width;
+          var page_offset = idx - remainder;
+          var page = database._get(database.get_table_page_key(table.name, page_offset));
+          var row = page['rows'][remainder];
+          return callback(table.types, row, 1);
         }
     };
 
