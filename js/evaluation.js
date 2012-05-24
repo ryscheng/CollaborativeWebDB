@@ -3,7 +3,7 @@ var evaluation = {
   started: false,
   myTableCreated: false, 
   
-  binSize: 5000, // bin size in milliseconds of timeseries 
+  binSize: 5, // bin size in seconds of timeseries 
   stats: {},
 
   write: function(obj) {
@@ -70,7 +70,8 @@ var evaluation = {
       counts: {},
       times: {}
     };
-    this.stats.startTime = new Date().getTime();
+    // convert to seconds
+    this.stats.startTime = (new Date().getTime()) / 1000;
 
     console.debug('starting testing');
     this.runQuery();
@@ -79,7 +80,8 @@ var evaluation = {
   stopEvaluation: function() {
     this.started = false;
     console.debug('stoping testing');
-    this.stats.endTime = new Date().getTime();
+    // convert to seconds
+    this.stats.endTime = (new Date().getTime()) / 1000;
 
     // report stats back to server
     this.socket.send(JSON.stringify(this.stats));
@@ -94,7 +96,8 @@ var evaluation = {
       this.stopEvaluation();
       return;
     }
-    this.queryStartTime = new Date().getTime();
+    // convert to seconds
+    this.queryStartTime = (new Date().getTime()) / 1000
     database.exec(query, false, this.data_cb.bind(this), 
                                 this.completion_cb.bind(this), 1);
   },
@@ -112,7 +115,8 @@ var evaluation = {
     }
     else {
       //ignore data, start the next query
-      var endTime = new Date().getTime();
+      // convert to seconds
+      var endTime = (new Date().getTime()) / 1000;
       var elapsed = endTime - this.queryStartTime;
       this.stats.time += elapsed;
 
