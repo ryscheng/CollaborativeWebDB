@@ -39,7 +39,12 @@ var p2p_pane = {
         req_fr.style.display='none';
         document.body.appendChild(req_fr);
         req_fr.addEventListener('load', function() {
-            $('#p2p')[0].innerHTML = "<p>Extension Communication Log</p><pre id='p2plog'></pre>";
+            $('#p2p')[0].innerHTML = "<p>Extension Communication Log " + 
+                "<button type='submit' class='btn'>Disconnect</button>" +
+                "</p><pre id='p2plog'></pre>";
+            $('#p2p button').click(function(e) {
+              localStorage.removeItem(p2p_pane._lsid);
+            });
             window.addEventListener('message', p2p_pane.msgTracker, false);
 
             // Let the extension respond, then restart the server.

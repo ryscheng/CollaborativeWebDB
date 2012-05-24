@@ -208,13 +208,13 @@ var node = {
       if (info) {
         pc.connect(info, function() {
           if (pc.state != WebP2PConnectionState.CONNECTED) {
-            server.write({"to":id, "msg": pc.getID()});
+            server.write({"to":id, "msg": pc.getId()});
           } else {
             pc.send(node.id);
           }
         });
       } else {
-        server.write({"to": id, "msg": pc.getID()});
+        server.write({"to": id, "msg": pc.getId()});
       }
       this.edges[id] = pc;
       pc.onMessage = node.onPeerMessage.bind(node, id);
