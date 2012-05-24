@@ -25,15 +25,38 @@ var server = {
         that.subscribers[i](msg);
       }
 	}
+	database.listeners['get_hash'] = server.retrieve;
+
+    // Create a server socket.
+	new WebP2PConnection().getId();
+	_WebP2PServer.onAccept = node.onPeerConnect;
 	return true;
   },
   
-  lookup: function(key, result) {
-    log.write("Looking up " + key);
-    if(server.write({"event":"get", "key":key})) {
-      if (server.waiters[key + ".cache"]) {
-        return result(server.waiters[key + ".cache"]);
+  retrieve: function(req, result) {
+    server.peers_for_hash(req, function(peers) {
+      if (!peers.length) {
+        result(null);
+      } else {
+        var p = node.get_connected(peers);
+        if (p) {
+          server.data_from_peer(p, req, result);
+        } else {
+          //todo: allow on demand connection establishment.
+          result(null);
+        }
+        result(null);
       }
+    });
+  },
+  
+  peers_for_hash: function(req, result) {
+    var key = req.hash;
+    log.write("Looking up " + key);
+    if (server.waiters[key + ".cache"]) {
+      return result(server.waiters[key + ".cache"]);
+    }
+    if(server.write({"event":"get", "key":key})) {
       if (server.waiters[key]) {
         server.waiters[key].push(result);
       } else {
@@ -41,6 +64,17 @@ var server = {
       }
     } else {
       result([]);
+    }
+  },
+  data_from_peer: function(peer, req, result) {
+    var key = req.hash;
+    log.write("Getting data for " + key);
+    var datakey = peer.sid + "_" + key;
+    if(server.waiters[datakey]) {
+      sever.waiters[datakey].push(result);
+    } else {
+      server.waiters[datakey] = [result];
+      peer.send(JSON.stringify({"event":"get","id":datakey,"key":key}));
     }
   },
   provide: function(key, getter) {
@@ -91,8 +125,7 @@ var node = {
           delete this.edges[msg['from']];
         }
       } else if (msg['msg'] && !this.full()) {
-        this.maybeConnect_(msg['from']);
-        this.edges[msg['from']].processSignalingMessage(msg['msg']);
+        this.maybeConnect_(msg['from'], msg['msg']);
       } else {
         server.write({to:msg['from'], event:'decline'});
       }
@@ -107,18 +140,82 @@ var node = {
     }
     return (edge_num >= this.MAX_EDGES);
   },
-  maybeConnect_:function(id) {
-    network_pane.saw_node(id);
-    if (!this.full()) {
-      // todo: true channel setup integration.
-      var pc = new webkitPeerConnection00("STUN stun.l.google.com:19302", this.send_.bind(this, id));
-      this.edges[id] = pc;
+  get_connected: function(peers) {
+    var filtered = peers.filter(function(peer) {
+      return this.edges[peer] !== undefined && this.edges[peer].state == WebP2PConnectionState.CONNECTED;
+    });
+    return filtered.length? filtered[0] : false;
+  },
+  onPeerConnect: function(connection) {
+    connection.onMessage = function(msg) {
+      if (node.edges[msg]) {
+        if (node.edges[msg].state == WebP2PConnectionState.CONNECTED && msg < node.id) {
+          connection.close();
+        } else {
+          node.edges[msg].close();
+          node.edges[msg] = connection;
+          connection.onMessage = node.onPeerMessage.bind(node, msg);
+          connection.onStateChange = node.onPeerStateChange.bind(node, msg);
+        }
+      }
+    };
+  },
+  onPeerStateChange: function(peer, state) {
+    if (state == STOPPING) {
+      var pc = this.edges[peer];
+      delete this.edges[peer];
+      pc.onMessage = null;
+      pc.onStateChange = null;
     }
   },
-  send_:function(id, msg) {
-    server.write({
-      to:id,
-      msg:msg
-    })
-  }
+  onPeerMessage: function(peer, message) {
+    var mo;
+    try {
+      mo = JSON.parse(message);
+    } catch(e) {
+      log.write("Malformed peer message from " + peer);
+      return;
+    }
+    if (!mo['event']) return;
+    if (mo['event'] == 'get') {
+      var getter = server.providers[mo['key']];
+      if (getter) {
+        getter(function(data) {
+          log.write('Sending cached data key ' + mo['key'] + ' to ' + peer);
+          node.edges[peer].send(JSON.stringify({'event':'resp', 'id':mo['id'], 'status':true, 'data':data}));        
+        });
+      } else {
+        log.write('Asked to provide unavailable data key ' + mo['key'] + ' for ' + peer);
+        this.edges[peer].send(JSON.stringify({'event':'resp', 'id':mo['id'], 'status':false}));
+      }
+    } else if (mo['event'] == 'resp') {
+      var waiters = server.waiters[mo['id']];
+      if (waiters) {
+        delete server.waiters[mo['id']];
+        for (var i = 0; i < waiters.length; i++) {
+          waiters[i](mo['status'] ? mo['data']: null);
+        }
+      }
+    }
+  },
+  maybeConnect_:function(id, info) {
+    network_pane.saw_node(id);
+    if (!this.full()) {
+      var pc = new WebP2PConnection();
+      if (info) {
+        pc.connect(info, function() {
+          if (pc.state != WebP2PConnectionState.CONNECTED) {
+            server.write({"to":id, "msg": pc.getID()});
+          } else {
+            pc.send(node.id);
+          }
+        });
+      } else {
+        server.write({"to": id, "msg": pc.getID()});
+      }
+      this.edges[id] = pc;
+      pc.onMessage = node.onPeerMessage.bind(node, id);
+      pc.onStateChange = node.onPeerStateChange.bind(node, id);
+    }
+  },
 };

@@ -4,7 +4,7 @@
  Adapted from the tornado websocket chat demo.
 """
 
-import os, sys, inspect
+import os, sys, inspect, time, math
 this_folder = os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0])
 tornado_folder = os.path.join(this_folder, "tornado")
 if tornado_folder not in sys.path:
@@ -52,7 +52,33 @@ class Application(tornado.web.Application):
 
 class EvaluationHandler(tornado.web.RequestHandler):
     def get(self):
+      cmd = self.get_argument("command", default=None)
+      if not cmd:
         self.render("index.html", evaluation=True)
+      else:
+        if cmd == "start":
+          logging.info("starting evaluation") 
+          rc = EvalWSHandler.start_evaluation()
+          self.write(tornado.escape.json_encode(rc))
+        elif cmd == "stop":
+          logging.info("stopping evaluation")
+          EvalWSHandler.stop_evaluation()
+        elif cmd == "stats":
+          logging.info("sending stats")
+          jsonStats = tornado.escape.json_encode(EvalWSHandler.evaluationRuns)
+          self.write(jsonStats)
+
+    @classmethod
+    def newEvalStats(self):
+      return {
+        "startTime": time.time(),
+        "endTime": None,
+        "counts": dict(),
+        "times": dict(),
+        "count": 0,
+        "time": 0,
+      }
+
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -63,9 +89,9 @@ class SubHandler(tornado.web.RequestHandler):
     def get(self):
         self.render("data.html")
 
-
 class DataHandler(tornado.web.RequestHandler):
     pagesize = 30
+    stats = None
 
     def initialize(self):
         if os.access(options.data, os.W_OK):
@@ -76,6 +102,20 @@ class DataHandler(tornado.web.RequestHandler):
             self.db = None
 
     def get(self):
+        # evaluation!
+        timeBin = None
+        stats = DataHandler.stats
+        if EvalWSHandler.started:
+          stats["count"] += 1
+          startTime = time.time()
+          timeBin = math.floor(startTime)
+          logging.info("timebin is %d" %(timeBin))
+          if (timeBin in stats["counts"]):
+            stats["counts"][timeBin] += 1
+          else:
+            stats["counts"][timeBin] = 1
+
+        # actual data handling
         q = urllib.unquote_plus(self.get_argument('q'))
         retval = {}
         if self.db:
@@ -91,40 +131,74 @@ class DataHandler(tornado.web.RequestHandler):
             retval['status'] = 'No Data Available'
 
         self.write(retval)
+
+        # evaluation!
+        if EvalWSHandler.started:
+          endTime = time.time()
+          elapsed = endTime-startTime
+          stats["time"] += elapsed
+          if (timeBin in stats["times"]):
+            stats["times"][timeBin] += elapsed
+          else:
+            stats["times"][timeBin] = elapsed
+
+          logging.info("done with a get, count: %d, time: %f, bincount: %d, bintime: %f" % (stats["count"], stats["time"], stats["counts"][timeBin], stats["times"][timeBin]))
                 
 class EvalWSHandler(tornado.websocket.WebSocketHandler):
   evaluators = dict();
   started = False
 
+  evaluationRuns = []
+
   def allow_draft76(self):
-      # for iOS 5.0 Safari
-      return True
+    # for iOS 5.0 Safari
+    return True
     
   def open(self):
-      self.id = 0
+    self.id = uuid.uuid4()
+    EvalWSHandler.evaluators[self.id] = self
   
   def on_close(self):
-      pass
-      #any cleanup stuff?
+    if self.id in EvalWSHandler.evaluators:
+      del EvalWSHandler.evaluators[self.id]
 
   def on_message(self, message):
-      logging.info("evalWS handler got message %r", message)
-      # do something with the message
+    logging.info("evalWS handler got message %r", message)
+    # do something with the message
 
-      parsed = tornado.escape.json_decode(message)
-      if "payload" in parsed:
-        if "command" in parsed["payload"]:
-          if parsed["payload"]["command"] == "start":
-            logging.info("...starting evaluation")
-          elif parsed["payload"]["command"] == "stop": 
-            logging.info("...stoping evaluation")
+    parsed = tornado.escape.json_decode(message)
+    if "count" in parsed:
+      logging.info("count: %d" % (parsed["count"]))
+    if "time" in parsed:
+      logging.info("time: %f" % (parsed["time"]))
 
-      
+
+  @classmethod
+  def start_evaluation(self):
+    if EvalWSHandler.started:
+      # starting while started has no effect
+      return False
+    EvalWSHandler.started = True
+    DataHandler.stats = EvaluationHandler.newEvalStats()
+    EvalWSHandler.evaluationRuns.append(DataHandler.stats)
+    for e in EvalWSHandler.evaluators:
+      EvalWSHandler.evaluators[e].write_message({"command": "start"})
+    return True
+    
+  @classmethod
+  def stop_evaluation(self):
+    EvalWSHandler.started = False
+    if DataHandler.stats:
+      DataHandler.stats["endTime"] = time.time()
+      DataHandler.stats = None
+    for e in EvalWSHandler.evaluators:
+      EvalWSHandler.evaluators[e].write_message({"command": "stop"})
 
 class MessageHandler(tornado.websocket.WebSocketHandler):
     waiters = dict()
     hashes = dict()
 
+    
     def allow_draft76(self):
         # for iOS 5.0 Safari
         return True

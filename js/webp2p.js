@@ -8,6 +8,7 @@ window.addEventListener('load', function() {
     compose_pane.init();
   });
   network_pane.init();
+  p2p_pane.init();
   sql_pane.init();
   describe_pane.init();
 

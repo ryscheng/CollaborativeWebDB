@@ -90,7 +90,7 @@ var database = {
     Host.log("Query estimated to cost " + table_cost + " pages");
     
     if (table_cost <= 4) { // Store base tables
-      var n = 0;
+      var n = 1;
       var continuation = function() {
         if (--n == 0) {
           database._reset();
@@ -110,6 +110,7 @@ var database = {
           database.load_page(database.get_table_page_key(i, database.page_width * (page - 1)), continuation);
         }
       }
+      continuation();
     } else { // Directly load results.
       var key = database.get_complex_page_key(query);
       database.load_page(key, function() {
@@ -265,11 +266,17 @@ var database = {
         def: create,
         dirty: {}
       };
-      var rows = create.split('\n');
-      for (var i = 1; i < rows.length; i++) {
-        if (rows[i].trim().match(/(PRIMARY KEY|UNIQUE|FOREIGN KEY)/))
-            continue
-        var kv = rows[i].trim().match(/([\S]*)\s+([\S]*)/i);
+      // When this breaks, http://regexpal.com is useful for seeing what isn't matching.
+      var create_regexp = /^\s*create\s+(temp|temporary)?\s*table\s+(\w*\.)?(\w*)\s+\(((\s*(\w+)\s+(\S+)(\s+(PRIMARY|NOT|UNIQUE|CHECK|DEFAULT|COLLATE|REFERENCES)[^,\)]*)?)(,\s*(\w+)\s+(\S+)(\s+(PRIMARY|NOT|UNIQUE|CHECK|DEFAULT|COLLATE|REFERENCES)[^,\)]*)?)*?)(,\s+(PRIMARY|UNIQUE|CHECK|FOREIGN)([^,]|\(.*\))+)*\)\s*$/i;
+      var matches = create_regexp.exec(create);
+      if (!matches) {
+        Host.log("Unparsed table definition: " + create);
+        return null;
+      }
+      // column defs show up matches[4]
+      var columns = matches[4].split(",");
+      for (var i = 0; i < columns.length; i++) {
+        var kv = columns[i].trim().match(/^([\S]*)\s+([\S]*)/i);
         if (kv == null || kv.length < 3)
             continue;
         obj.colnames.push(kv[1]);

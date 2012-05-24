@@ -29,11 +29,15 @@ var database = {
       database.worker.onload = cb;
     }
   },
+  listeners: {},
   _msg: function(event) {
     try {
-      console.log('message from db:' + event.data);
+      if (typeof event.data !== 'string') {
+        return;
+      }
       var data = JSON.parse(event.data);
       if (data && data['m']) {
+        console.log('message from db:' + event.data);
         if (data['m'] == 'exec') {
           if (data['r']['ret'] !== undefined) {
             var id = data['r']['id'];
@@ -55,6 +59,11 @@ var database = {
           database._err(data['r']);
         } else if (data['m'] =='set') {
           database[data['r'][0]] = data['r'][1];
+        } else if (data['m'] in database.listeners) {
+          var id = data['id'];
+          database.listeners[data['m']](data['r'], function(arg) {
+            database.worker.contentWindow.postMessage(JSON.stringify({'cb':id,'r':arg}), "*");
+          });
         } else {
           database.status_cb && database.status_cb(data['r']);
         }

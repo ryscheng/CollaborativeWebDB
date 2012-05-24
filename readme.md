@@ -8,10 +8,10 @@ Components
    The Client code and javascript libraries for a P2P web application.
 * Server
    The Python web server for topology coordination.
-* Npapi
-   A chrome extension for P2P communication using an NPAPI plugin.
-* NaCl
-   A chrome extension to P2P communication using a NaCl module.
+* Plugins
+   A chrome extension for P2P communication.  The NaCl plugin is working.
+* Sqlite
+   The sqlite extension, and build environment for compilation to JS.
 
 Running
 -------
@@ -26,6 +26,12 @@ Then, in a browser visit http://localhost:8080/
 Layout
 ------
 
+index.html is the outer application, it manages peer connections and display.
+In contrast, data.html is the database frame, and handles data management and
+queries.  The two are connected by `db_host.js` on index.html and `db_worker.js`
+on data.html.
+
+##### index.html layout
 webp2p.js Composes the application.  *_pane.js contain display logic for the
 various application components.
 
@@ -39,8 +45,16 @@ d3.js is the http://d3js.org visualization library.
 
 bootstrap.js is the http://http://twitter.github.com/bootstrap/ style library.
 
-jsinq.js and jsinq-query.js provide linq parsing, lexing, and evaluation in
-javascript.  These are lightly modified from http://jsinq.codeplex.com
+##### data.html layout
 
-sql.js provides a database abstraction on top of jsinq, which attempts to
-pull data from the server or other clients when it is not available locally.
+sql.js provides a database abstraction on top of sqlite, and handles data
+storage and caching.
+
+md5.js is a standard md5 implementation from http://crypto-js.googlecode.com.
+
+sqlite.js is sqlite http://sqlite.org compiled to javascript using emscripten.
+Emscripten is located at https://github.com/kripken/emscripten
+Sqlite was first compiled to javascript here https://github.com/kripken/sql.js
+this project adds the additional code in the sqlite directory, which provides
+a `jsbacking` sqlite module, which creates sqlite virtual tables backed by data
+from javascript objects.
