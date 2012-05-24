@@ -32,9 +32,12 @@ var database = {
   listeners: {},
   _msg: function(event) {
     try {
-      console.log('message from db:' + event.data);
+      if (typeof event.data !== 'string') {
+        return;
+      }
       var data = JSON.parse(event.data);
       if (data && data['m']) {
+        console.log('message from db:' + event.data);
         if (data['m'] == 'exec') {
           if (data['r']['ret'] !== undefined) {
             var id = data['r']['id'];
