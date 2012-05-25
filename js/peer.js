@@ -46,8 +46,8 @@ var server = {
       } else {
         var p = node.get_connected(peers);
         if (p) {
-          if (evaluation) {
-            evaluation.countPeer(p);
+          if (window.evaluation) {
+            window.evaluation.countPeer(p);
           }
           server.data_from_peer(p, req, result);
         } else {
