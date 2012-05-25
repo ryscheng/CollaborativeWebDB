@@ -22,23 +22,7 @@ function moduleDidLoad() {
 function handleMessage(message_event) {
   console.log("from nacl: "+message_event.data);
   var result = JSON.parse(message_event.data);
-  if (result.request.command == COMMANDS.createsocket &&
-    result.result == "PP_OK") {
-    contentScripts[result.request.portname].sockets.push(result.socketId);
-  } else if (result.request.command == COMMANDS.createserversocket &&
-    result.result == "PP_OK") {
-    contentScripts[result.request.portname].listeners.push(result.ssocketId);
-  } else if (result.request.command == COMMANDS.destroy && 
-    result.result == "PP_OK") {
-    contentScripts[result.request.portname].sockets.splice(
-        contentScripts[result.request.portname].sockets.indexOf(result.request.socketId),1);
-  } else if (result.request.command == COMMANDS.destroyserversocket && 
-    result.result == "PP_OK") {
-    contentScripts[result.request.portname].listeners.splice(
-        contentScripts[result.request.portname].listeners.indexOf(result.request.ssocketId),1);
-  }
-  contentScripts[result.request.portname] &&
-    contentScripts[result.request.portname].port.postMessage(result);
+  contentScripts[result.request.portname].onMessageFromNacl(result);
 }
 
 function ContentScriptConnection(port) {
@@ -48,8 +32,9 @@ function ContentScriptConnection(port) {
   
   this.sockets = [];
   this.listeners = [];
+  this.readwriteops = {};
 
-  this.onMessage = function(msg) {
+  this.onMessageFromApp = function(msg) {
     msg.portname = port.name;
     console.log("MSG:"+port.name+"::"+JSON.stringify(msg));
     if (msg.command == COMMANDS.getpublicip) {
@@ -61,18 +46,32 @@ function ContentScriptConnection(port) {
     } else if (naclmodule == null) {
       port.postMessage({request: msg, error: 'NaCl module not loaded'});
     } else {
-      if (msg.command.socketId && this.sockets.indexOf(msg.command.socketId) === -1) {
+      if (msg.socketId && this.sockets.indexOf(msg.socketId) === -1) {
         port.postMessage({request: msg, error: 'unrecognized socket'});
-        reutrn;
+        return;
       }
-      if (msg.command.ssocketId && this.listeners.indexOf(msg.command.ssocketId) === -1) {
+      if (msg.ssocketId && this.listeners.indexOf(msg.ssocketId) === -1) {
         port.postMessage({request: msg, error: 'unrecognized ssocket'});
         return;
       }
       naclmodule.postMessage(JSON.stringify(msg));
     }
   };
-  
+
+  this.onMessageFromNacl = function (msg) {
+    if (msg.request.command == COMMANDS.createsocket && msg.resultStr == "PP_OK") {
+      this.sockets.push(msg.socketId);
+    } else if (msg.request.command == COMMANDS.createserversocket && msg.resultStr == "PP_OK") {
+      this.listeners.push(msg.ssocketId);
+    } else if (msg.request.command == COMMANDS.accept && msg.resultStr == "PP_OK") {
+      this.sockets.push(msg.socketId);
+    } else if (msg.request.command == COMMANDS.destroy && msg.resultStr == "PP_OK") {
+      this.sockets.splice(this.sockets.indexOf(msg.request.socketId),1);
+    } else if (msg.request.command == COMMANDS.destroyserversocket && msg.resultStr == "PP_OK") {
+      this.listeners.splice(this.listeners.indexOf(msg.request.ssocketId),1);
+    }
+    this && this.port.postMessage(msg);
+  };
   
   this.onDisconnect = function(evt) {
     console.log('Content script disconnected!');
@@ -106,6 +105,6 @@ function requestPermissions(origin) {
 function onContentScriptConnect(port) {
   console.log("New Content script: " + port.name);
   contentScripts[port.name] = new ContentScriptConnection(port);
-  port.onMessage.addListener(contentScripts[port.name].onMessage.bind(contentScripts[port.name]));
+  port.onMessage.addListener(contentScripts[port.name].onMessageFromApp.bind(contentScripts[port.name]));
   port.onDisconnect.addListener(contentScripts[port.name].onDisconnect.bind(contentScripts[port.name]));
 }
