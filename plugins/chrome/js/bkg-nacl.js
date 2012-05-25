@@ -1,6 +1,6 @@
 var naclmodule = null;  // Global application object.
 var contentScripts = new Object();
-init()
+init();
 
 function init() {
   console.log("WebP2P NaCl Transport init()");

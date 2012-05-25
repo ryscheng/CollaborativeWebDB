@@ -1,5 +1,8 @@
 init();
 var ssocketId;
+//146 characters
+var clientToServerMsg = "HELLO! THIS IS THE STORY OF MY LIFE. I WAS BORN AS A YOUNG BOY. THEN A BUNCH OF STUFF HAPPENED. ESSENTIALLY, THIS IS A LONG STORY. LONG LONG LONG";
+var msgLength = 146;
 
 function init() {
   console.log("Test Init()");
@@ -23,7 +26,7 @@ function buttonClick() {
         console.log("ServerListen:"+JSON.stringify(msg));
         connection.accept(ssocketId, function (msg) {
           console.log("ServerAccept:"+JSON.stringify(msg));
-          connection.read(msg.socketId, 17, function(msg) {
+          connection.read(msg.socketId, msgLength, function(msg) {
             console.log("ServerRead:"+JSON.stringify(msg));
             connection.disconnect(msg.request.socketId, function (msg) {
               console.log("ServerDisconnect:"+JSON.stringify(msg));
@@ -43,7 +46,7 @@ function buttonClick() {
           console.log("CreateClientSocket:"+JSON.stringify(msg));
           connection.connect(msg.socketId, "127.0.0.1", 9229, function (msg) {
             console.log("ClientConnect:"+JSON.stringify(msg));
-              connection.write(msg.request.socketId, "HELLO FROM CLIENT", function (msg) {
+              connection.write(msg.request.socketId, clientToServerMsg, function (msg) {
               console.log("ClientWrite:"+JSON.stringify(msg));
               connection.disconnect(msg.request.socketId, function(msg) {
                 console.log("ClientDisconnect:"+JSON.stringify(msg));

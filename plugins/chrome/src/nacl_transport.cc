@@ -131,7 +131,7 @@ std::string NaclTransportInstance::JsonGet(std::string json, std::string key){
 void NaclTransportInstance::Callback(int32_t result, int32_t id, int32_t* pres){
   char retStr[MAX_RESULT_SIZE];
   fprintf(stdout, "callback:%d:%s\n", id, reqs_[id].c_str());
-  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":\"%s\"}", reqs_[id].c_str(), ppErrorToString(result));
+  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\"}", reqs_[id].c_str(), result, ppErrorToString(result));
   log_->log(retStr);
   reqs_.erase(id);
 }
@@ -140,7 +140,7 @@ void NaclTransportInstance::ReadCallback(int32_t result, int32_t id, int32_t num
   char retStr[MAX_RESULT_SIZE];
   fprintf(stdout, "callback:%d:%s\n", id, reqs_[id].c_str());
   readBuf[numBytes] = '\0'; //Just in case?
-  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":\"%s\",\"data\":\"%s\"}", reqs_[id].c_str(), ppErrorToString(result), readBuf);
+  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"data\":\"%s\"}", reqs_[id].c_str(), result, ppErrorToString(result), readBuf);
   log_->log(retStr);
   reqs_.erase(id);
 }
@@ -149,7 +149,7 @@ void NaclTransportInstance::NewServerSocketCallback(int32_t result, int32_t id, 
   char retStr[MAX_RESULT_SIZE];
   fprintf(stdout, "callback:%d:%s\n", id, reqs_[id].c_str());
   server_sockets_[id] = new pp::TCPServerSocketPrivate(this);
-  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":\"%s\",\"ssocketId\":%d}", reqs_[id].c_str(), ppErrorToString(result), id);
+  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"ssocketId\":%d}", reqs_[id].c_str(), result, ppErrorToString(result), id);
   log_->log(retStr);
   reqs_.erase(id);
 }
@@ -162,7 +162,7 @@ void NaclTransportInstance::NewSocketCallback(int32_t result, int32_t id, bool f
   } else {
     sockets_[id] = new pp::TCPSocketPrivate(this);
   }
-  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":\"%s\",\"socketId\":%d}", reqs_[id].c_str(), ppErrorToString(result), id);
+  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"socketId\":%d}", reqs_[id].c_str(), result, ppErrorToString(result), id);
   log_->log(retStr);
   reqs_.erase(id);
 }
