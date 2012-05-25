@@ -30,7 +30,8 @@ enum COMMANDS {
   WEBP2P_CREATESERVERSOCKET,
   WEBP2P_LISTEN, 
   WEBP2P_ACCEPT,
-  WEBP2P_STOPLISTENING
+  WEBP2P_STOPLISTENING,
+  WEBP2P_DESTROYSERVERSOCKET
 };
 
 class NaclTransportInstance : public pp::Instance {
@@ -40,23 +41,22 @@ class NaclTransportInstance : public pp::Instance {
     }
     virtual ~NaclTransportInstance(){
       delete log_;
-      if (server_socket_){
-        delete server_socket_;
-      }
       reqs_.clear();
       socket_res_.clear();
       sockets_.clear();
+      server_sockets_.clear();
     }
 
     virtual void HandleMessage(const pp::Var& var_message);
     void Callback(int32_t result, int32_t id, int32_t* pres);
+    void NewServerSocketCallback(int32_t result, int32_t id, int32_t* pres);
     void NewSocketCallback(int32_t result, int32_t id, bool from_res, int32_t* pres);
     void ReadCallback(int32_t result, int32_t id, int32_t numBytes, int32_t* pres);
   private:
     Logger* log_;
     pp::CompletionCallbackFactory<NaclTransportInstance, ThreadSafeRefCount> factory_;
     std::map<int32_t, std::string> reqs_;
-    pp::TCPServerSocketPrivate* server_socket_;
+    std::map<int32_t, pp::TCPServerSocketPrivate*> server_sockets_;
     std::map<int32_t, PP_Resource*> socket_res_;
     std::map<int32_t, pp::TCPSocketPrivate*> sockets_;
 

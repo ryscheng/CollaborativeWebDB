@@ -53,14 +53,17 @@ function PeerConnection() {
   this.createServerSocket = function(callback) {
     sendCommand({command: COMMANDS.createserversocket}, callback);
   }
-  this.listen = function(callback) {
-    sendCommand({command: COMMANDS.listen, port: DEFAULT_PORT}, callback);
+  this.listen = function(ssocketId, callback) {
+    sendCommand({command: COMMANDS.listen, ssocketId: ssocketId, port: DEFAULT_PORT}, callback);
   }
-  this.accept = function(callback) {
-    sendCommand({command: COMMANDS.accept}, callback);
+  this.accept = function(ssocketId, callback) {
+    sendCommand({command: COMMANDS.accept, ssocketId: ssocketId}, callback);
   }
-  this.stoplistening = function(callback) {
-    sendCommand({command: COMMANDS.stoplistening}, callback);
+  this.stopListening = function(ssocketId, callback) {
+    sendCommand({command: COMMANDS.stoplistening, ssocketId: ssocketId}, callback);
+  }
+  this.destroyServerSocket = function(ssocketId, callback) {
+    sendCommand({command: COMMANDS.destroyserversocket, ssocketId: ssocketId}, callback);
   }
 
 }
