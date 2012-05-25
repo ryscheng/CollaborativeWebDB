@@ -161,12 +161,16 @@ var node = {
         if (node.edges[msg].state == WebP2PConnectionState.CONNECTED && msg < node.id) {
           connection.close();
         } else {
+          if (node.eges[msg].state != WebP2PConnectionState.CONNECTED) {
+            network_pane.channel_node(msg);
+          }
           node.edges[msg].close();
           node.edges[msg] = connection;
           connection.onMessage = node.onPeerMessage.bind(node, msg);
           connection.onStateChange = node.onPeerStateChange.bind(node, msg);
         }
       } else {
+        network_pane.channel_node(msg);
         node.edges[msg] = connection;
         connection.onMessage = node.onPeerMessage.bind(node, msg);
         connection.onStateChange = node.onPeerStateChange.bind(node, msg);        
@@ -220,6 +224,7 @@ var node = {
           if (pc.state != WebP2PConnectionState.CONNECTED) {
             server.write({"to":id, "msg": pc.getId()});
           } else {
+            network_pane.channel_node(id);
             pc.send(node.id);
           }
         });
