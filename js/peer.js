@@ -157,13 +157,11 @@ var node = {
         } else {
           node.edges[msg].close();
           node.edges[msg] = connection;
-          connection.peer = msg;
           connection.onMessage = node.onPeerMessage.bind(node, msg);
           connection.onStateChange = node.onPeerStateChange.bind(node, msg);
         }
       } else {
         node.edges[msg] = connection;
-        connection.peer = msg;
         connection.onMessage = node.onPeerMessage.bind(node, msg);
         connection.onStateChange = node.onPeerStateChange.bind(node, msg);        
       }

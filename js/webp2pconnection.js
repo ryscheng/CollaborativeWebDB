@@ -31,7 +31,6 @@ var WebP2PConnection = function(id) {
   this.sid = id;
   this.state = id ? WebP2PConnectionState.CONNECTED : WebP2PConnectionState.NEW;
 
-  this.peer = id ? Math.random() : null;
   this._cbid = 0;
   this._cbr = {};
   window.addEventListener("message", this._receiveCommand.bind(this), false);
@@ -105,6 +104,7 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
   if (!done) {
     done = function() {};
   }
+  this.sid = -1 * Math.random();
   this._transition(WebP2PConnectionState.CONNECTING);
   var connectFunction = function(cb) {
     this._createSocket(function(msg) {
@@ -262,7 +262,7 @@ WebP2PConnection.prototype._sendCommand = function(msg, cb) {
 
 WebP2PConnection.prototype._receiveCommand = function(event) {
   if (event.data && event.data.to && event.data.to == "page" &&
-      event.data.msg.request.peer == this.sid) {
+      event.data.msg.request.peer === this.sid) {
     if (this._cbr[event.data.msg.request.id] && typeof this._cbr[event.data.msg.request.id] == 'function') {
       this._cbr[event.data.msg.request.id](event.data.msg);
       delete this._cbr[event.data.msg.request.id];
