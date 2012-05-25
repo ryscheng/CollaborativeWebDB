@@ -71,10 +71,10 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
     this._getPublicIp(function(msg) {
       this._addr = msg.result;
       this._createServerSocket(function(msg) {
-        if (msg.result == "PP_OK") {
+        if (msg.result == 0) {
           this.sid = msg.ssocketId;
           this._listen(WebP2PConnectionSettings.DEFAULT_PORT, function(msg) {
-            if (msg.result != "PP_OK") {
+            if (msg.result != 0) {
               this._transition(WebP2PConnectionState.STOPPED);
               return;
             }
@@ -116,7 +116,7 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
       if (msg.socketId !== undefined) {
         this.sid = msg.socketId;
         this._connect(host, port, function(msg) {
-          if (msg.result == "PP_OK") {
+          if (msg.result == 0) {
             this._transition(WebP2PConnectionState.CONNECTED);
             this._receive();
           } else {
