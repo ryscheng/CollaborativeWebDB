@@ -72,7 +72,7 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
     case WEBP2P_WRITE:
       sockId = atoi(this->JsonGet(message, "\"socketId\"").c_str());
       data = this->JsonGet(message, "\"data\"");
-      data = data.substr(1, host.size()-2); //trim quotes
+      data = data.substr(1, data.size()-2); //trim quotes
       sockets_[sockId]->Write(data.c_str(), data.size(), factory_.NewCallback(&NaclTransportInstance::Callback, id, &ret));
       break;
     case WEBP2P_DISCONNECT:

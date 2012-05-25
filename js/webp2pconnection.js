@@ -166,13 +166,14 @@ WebP2PConnection.prototype.send = function(msg) {
     return false;
   }
   var length = msg.length;
-  var bytes = "";
-  for (var i = 0; i < 4; i++) {
-    var modulo = length % 128;
-    length = Math.floor(length / 128);
-    bytes = String.fromCharCode(modulo) + bytes;
+  var llength = (length + "").length;
+  if (llength > 9) {
+    console.log("Message too long!");
+    return false;
+  } else if (length == 0) {
+    llength = "";
   }
-  this._write(bytes + msg, function(msg) {});
+  this._write(llength + "" + length + "" + msg, function(msg) {});
   return true;
 };
 
@@ -185,14 +186,10 @@ WebP2PConnection.prototype._receive = function() {
     return;
   }
 
-  this._read(4, function(msg) {
+  this._read(1, function(msg) {
     if (msg.data && this.state == WebP2PConnectionState.CONNECTED) {
-      var msglen = 0;
-      for (var i = 0; i < 4; i ++) {
-        var c = msg.data.charCodeAt(i);
-        msglen = msglen * 128 + c;
-      }
-      if (msglen <= 0) {
+      var msglen = parseInt(msg.data);
+      if (msglen == 0) {
         if (this.state == WebP2PConnectionState.CONNECTED) {
           this._transition(WebP2PConnectionState.STOPPING);
           this.close();
@@ -200,11 +197,18 @@ WebP2PConnection.prototype._receive = function() {
         return;
       }
       this._read( msglen, function(msg) {
-        if (msg.data) {
-          this.onMessage(msg.data);
-          window.setTimeout(this._receive.bind(this), 0);
+        if (msg.data && this.state == WebP2PConnectionState.CONNECTED) {
+          var msglen = parseInt(msg.data);
+          this._read( msglen, function(msg) {
+            if (msg.data) {
+              this.onMessage(msg.data);
+              window.setTimeout(this._receive.bind(this), 0);
+            } else {
+              console.log('could not read peer message');
+            }
+          }.bind(this));
         } else {
-          console.log('could not read peer message');
+          window.setTimeout(this._receive.bind(this), 0);
         }
       }.bind(this));
     } else {
