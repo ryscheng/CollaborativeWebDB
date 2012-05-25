@@ -48,8 +48,8 @@ var server = {
       } else {
         var p = node.get_connected(peers);
         if (p) {
-          if (evaluation) {
-            evaluation.countPeer(p);
+          if (window.evaluation) {
+            window.evaluation.countPeer(p);
           }
           server.data_from_peer(p, req, result);
         } else {
@@ -149,7 +149,7 @@ var node = {
     var filtered = peers.filter(function(peer) {
       return this.edges[peer] !== undefined && this.edges[peer].state == WebP2PConnectionState.CONNECTED;
     }.bind(this));
-    return filtered.length? filtered[0] : false;
+    return filtered.length? this.edges[filtered[0]] : false;
   },
   onPeerConnect: function(connection) {
     connection.onMessage = function(msg) {
@@ -157,12 +157,16 @@ var node = {
         if (node.edges[msg].state == WebP2PConnectionState.CONNECTED && msg < node.id) {
           connection.close();
         } else {
+          if (node.eges[msg].state != WebP2PConnectionState.CONNECTED) {
+            network_pane.channel_node(msg);
+          }
           node.edges[msg].close();
           node.edges[msg] = connection;
           connection.onMessage = node.onPeerMessage.bind(node, msg);
           connection.onStateChange = node.onPeerStateChange.bind(node, msg);
         }
       } else {
+        network_pane.channel_node(msg);
         node.edges[msg] = connection;
         connection.onMessage = node.onPeerMessage.bind(node, msg);
         connection.onStateChange = node.onPeerStateChange.bind(node, msg);        
@@ -218,6 +222,7 @@ var node = {
           if (pc.state != WebP2PConnectionState.CONNECTED) {
             server.write({"to":id, "msg": pc.getId()});
           } else {
+            network_pane.channel_node(id);
             pc.send(node.id);
           }
         });
