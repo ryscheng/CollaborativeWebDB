@@ -28,10 +28,10 @@ var server = {
     database.listeners['get_hash'] = server.retrieve;
     database.listeners['announce_hash'] = server.announce_hash;
 
-      // Create a server socket.
-    new WebP2PConnection().getId();
-    _WebP2PServer.onAccept = node.onPeerConnect;
-    return true;
+    // Create a server socket.
+	new WebP2PConnection().getId();
+	window._WebP2PServer.onAccept = node.onPeerConnect;
+	return true;
   },
  
   announce_hash: function(hashQueryPair, result) {
@@ -163,13 +163,11 @@ var node = {
         } else {
           node.edges[msg].close();
           node.edges[msg] = connection;
-          connection.peer = msg;
           connection.onMessage = node.onPeerMessage.bind(node, msg);
           connection.onStateChange = node.onPeerStateChange.bind(node, msg);
         }
       } else {
         node.edges[msg] = connection;
-        connection.peer = msg;
         connection.onMessage = node.onPeerMessage.bind(node, msg);
         connection.onStateChange = node.onPeerStateChange.bind(node, msg);        
       }

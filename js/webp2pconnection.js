@@ -25,27 +25,29 @@ var WebP2PConnectionSettings = {
   DEFAULT_PORT: 9229,
 };
 
-var _WebP2PServer = null;
+window._WebP2PServer = null;
 
 var WebP2PConnection = function(id) {
   this.sid = id;
   this.state = id ? WebP2PConnectionState.CONNECTED : WebP2PConnectionState.NEW;
 
-  this.peer = id ? Math.random() : null;
   this._cbid = 0;
   this._cbr = {};
   window.addEventListener("message", this._receiveCommand.bind(this), false);
+  if (this.state == WebP2PConnectionState.CONNECTED) {
+    this._receive();
+  }
 };
 
 WebP2PConnection.prototype.getId = function() {
-  if (!_WebP2PServer) {
-    _WebP2PServer = new WebP2PConnection(null);
-    _WebP2PServer.connect();
+  if (!window._WebP2PServer) {
+    window._WebP2PServer = new WebP2PConnection(null);
+    window._WebP2PServer.connect();
   }
-  if (_WebP2PServer.state != WebP2PConnectionState.LISTENING) {
+  if (window._WebP2PServer.state != WebP2PConnectionState.LISTENING) {
     return undefined;
   } else {
-    return _WebP2PServer._addr + "|" + WebP2PConnectionSettings.DEFAULT_PORT;
+    return window._WebP2PServer._addr + "|" + WebP2PConnectionSettings.DEFAULT_PORT;
   }
 }
 
@@ -56,12 +58,12 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
   }
   var parts = otherid ? otherid.split("|") : [0,0];
   var host = parts[0];
-  var port = parts[1];
+  var port = parseInt(parts[1]);
 
-  if (!_WebP2PServer) {
-    _WebP2PServer = new WebP2PConnection(null);
-    _WebP2PServer.connect();
-  } else if (this == _WebP2PServer) {
+  if (!window._WebP2PServer) {
+    window._WebP2PServer = new WebP2PConnection(null);
+    window._WebP2PServer.connect();
+  } else if (this == window._WebP2PServer) {
     console.log('starting listener');
     this._onListen = [];
     this._transition(WebP2PConnectionState.CONNECTING);
@@ -105,14 +107,16 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
   if (!done) {
     done = function() {};
   }
+  this.sid = -1 * Math.random();
   this._transition(WebP2PConnectionState.CONNECTING);
   var connectFunction = function(cb) {
     this._createSocket(function(msg) {
-      if (msg.socketId) {
+      if (msg.socketId !== undefined) {
         this.sid = msg.socketId;
         this._connect(host, port, function(msg) {
           if (msg.result == "PP_OK") {
             this._transition(WebP2PConnectionState.CONNECTED);
+            this._receive();
           } else {
             console.log(msg);
             this._transition(WebP2PConnectionState.STOPPED);
@@ -125,8 +129,8 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
       }
     }.bind(this));
   }.bind(this);
-  if (_WebP2PServer.state != WebP2PConnectionState.LISTENING) {
-    _WebP2PServer._onListen.push(connectFunction.bind(this, done));
+  if (window._WebP2PServer.state != WebP2PConnectionState.LISTENING) {
+    window._WebP2PServer._onListen.push(connectFunction.bind(this, done));
   } else {
     connectFunction(done);
   }
@@ -162,13 +166,14 @@ WebP2PConnection.prototype.send = function(msg) {
     return false;
   }
   var length = msg.length;
-  var bytes = "";
-  for (var i = 0; i < 4; i++) {
-    var modulo = length % 128;
-    length = Math.floor(length / 128);
-    bytes = String.fromCharCode(modulo) + bytes;
+  var llength = (length + "").length;
+  if (llength > 9) {
+    console.log("Message too long!");
+    return false;
+  } else if (length == 0) {
+    llength = "";
   }
-  this._write(bytes + msg, function(msg) {});
+  this._write(llength + "" + length + "" + msg, function(msg) {});
   return true;
 };
 
@@ -181,14 +186,10 @@ WebP2PConnection.prototype._receive = function() {
     return;
   }
 
-  this._read(4, function(msg) {
+  this._read(1, function(msg) {
     if (msg.data && this.state == WebP2PConnectionState.CONNECTED) {
-      var msglen = 0;
-      for (var i = 0; i < 4; i ++) {
-        var c = msg.data.charCodeAt(i);
-        msglen = msglen * 128 + c;
-      }
-      if (msglen <= 0) {
+      var msglen = parseInt(msg.data);
+      if (msglen == 0) {
         if (this.state == WebP2PConnectionState.CONNECTED) {
           this._transition(WebP2PConnectionState.STOPPING);
           this.close();
@@ -196,11 +197,18 @@ WebP2PConnection.prototype._receive = function() {
         return;
       }
       this._read( msglen, function(msg) {
-        if (msg.data) {
-          this.onMessage(msg.data);
-          window.setTimeout(this._receive.bind(this), 0);
+        if (msg.data && this.state == WebP2PConnectionState.CONNECTED) {
+          var msglen = parseInt(msg.data);
+          this._read( msglen, function(msg) {
+            if (msg.data) {
+              this.onMessage(msg.data);
+              window.setTimeout(this._receive.bind(this), 0);
+            } else {
+              console.log('could not read peer message');
+            }
+          }.bind(this));
         } else {
-          console.log('could not read peer message');
+          window.setTimeout(this._receive.bind(this), 0);
         }
       }.bind(this));
     } else {
@@ -262,7 +270,7 @@ WebP2PConnection.prototype._sendCommand = function(msg, cb) {
 
 WebP2PConnection.prototype._receiveCommand = function(event) {
   if (event.data && event.data.to && event.data.to == "page" &&
-      event.data.msg.request.peer == this.sid) {
+      event.data.msg.request.peer === this.sid) {
     if (this._cbr[event.data.msg.request.id] && typeof this._cbr[event.data.msg.request.id] == 'function') {
       this._cbr[event.data.msg.request.id](event.data.msg);
       delete this._cbr[event.data.msg.request.id];
