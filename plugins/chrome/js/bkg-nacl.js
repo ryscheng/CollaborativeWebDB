@@ -22,13 +22,27 @@ function moduleDidLoad() {
 function handleMessage(message_event) {
   console.log("from nacl: "+message_event.data);
   var result = JSON.parse(message_event.data);
-  contentScripts[result.request.portname].port.postMessage(result);
+  if (result.request.command == COMMANDS.createsocket &&
+    result.result == "PP_OK") {
+    contentScripts[result.request.portname].sockets.push(result.socketId);
+  } else if (result.request.command == COMMANDS.listen &&
+    result.result == "PP_OK") {
+    contentScripts[result.request.portname].listening = true;
+  } else if (result.request.commands == COMMANDS.stoplistening &&
+    result.result == "PP_OK") {
+    contentScripts[result.request.portname].listening = false;
+  }
+  contentScripts[result.request.portname] &&
+    contentScripts[result.request.portname].port.postMessage(result);
 }
 
 function ContentScriptConnection(port) {
   this.port = port;
   this.onRead = function(socketEvent) {
   }
+  
+  this.sockets = [];
+  this.listening = false;
 
   this.onMessage = function(msg) {
     msg.portname = port.name;
@@ -42,8 +56,33 @@ function ContentScriptConnection(port) {
     } else if (naclmodule == null) {
       port.postMessage({request: msg, error: 'NaCl module not loaded'});
     } else {
+      if (msg.command == COMMANDS.destroy) {
+        var sid = msg.socketId;
+        for (var i = 0; i < this.sockets.length; i++) {
+          if(this.sockets[i] == sid) {
+            this.sockets.splice(i,1);
+            break;
+          }
+        }
+      }
       naclmodule.postMessage(JSON.stringify(msg));
     }
+  };
+  
+  
+  this.onDisconnect = function(evt) {
+    console.log('Content script disconnected!');
+    // clean up.
+    if (naclmodule != null) {
+      for (var i = 0; i < this.sockets.length; i++) {
+        naclmodule.postMessage(JSON.stringify({command: COMMANDS.destroy, socketId: this.sockets[i]}));
+      }
+      if (this.listening) {
+        console.log('told nacl to stop listening');
+        naclmodule.postMessage(JSON.stringify({command: COMMANDS.stoplistening}));
+      }
+    }
+    delete contentScripts[this.port.name];
   }
 }
 
@@ -64,5 +103,6 @@ function requestPermissions(origin) {
 function onContentScriptConnect(port) {
   console.log("New Content script: " + port.name);
   contentScripts[port.name] = new ContentScriptConnection(port);
-  port.onMessage.addListener(contentScripts[port.name].onMessage);
+  port.onMessage.addListener(contentScripts[port.name].onMessage.bind(contentScripts[port.name]));
+  port.onDisconnect.addListener(contentScripts[port.name].onDisconnect.bind(contentScripts[port.name]));
 }
