@@ -6,6 +6,9 @@
 //Based on <NaClSDK>/pepper_19/toolchain/linux_x86_newlib/x86_64-nacl/include/ppapi/c/pp_errors.h
 
 char const* ppErrorToString(int32_t errornum) {
+  if (errornum > 0) {
+    return "NO_ERRORS";
+  }
   switch(errornum) {
     case PP_OK:
       return "PP_OK";
@@ -56,7 +59,7 @@ char const* ppErrorToString(int32_t errornum) {
     case PP_ERROR_WRONG_THREAD:
       return "PP_ERROR_WRONG_THREAD";
     default:
-      return "ERROR MESSAGE NOT FOUND";
+      return "WTF IS THIS ERROR? IDK";
   }
 }
 
