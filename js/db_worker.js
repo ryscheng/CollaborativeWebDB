@@ -44,7 +44,13 @@ var Host = {
       Host._cbr = {};
     }
     var id = Host._cbid++;
-    Host._cbr[id] = function(arg) {delete Host._cbr[id]; cb(arg) };
+    
+    Host._cbr[id] = function(arg) {
+      if (deleteAfterCalling) {
+        delete Host._cbr[id]; 
+      }
+      cb(arg);
+    };
     return id;
   },
   prop: function(key, val) {
