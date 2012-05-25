@@ -193,7 +193,7 @@ var node = {
     if (mo['event'] == 'get') {
       var key = server.providers[mo['key']];
       if (key) {
-        getProvidedData(key, function(data) {
+        database.getProvidedData(key, function(data) {
           log.write('Sending cached data key ' + mo['key'] + ' to ' + peer);
           node.edges[peer].send(JSON.stringify({'event':'resp', 'id':mo['id'], 'status':true, 'data':data}));        
         });
