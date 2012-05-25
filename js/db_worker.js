@@ -38,7 +38,7 @@ var functions = {
 };
 
 var Host = {
-  cbs: function(cb) {
+  cbs: function(cb, deleteAfterCalling) {
     if (!Host._cbid) {
       Host._cbid = 0;
       Host._cbr = {};
@@ -54,8 +54,16 @@ var Host = {
     sendMessage({'m':'log','r':msg});
   },
   get_hash: function(hash, cb) {
-    sendMessage({'m':'get_hash','r':{'hash':hash}, 'id':Host.cbs(cb)});
+    sendMessage({'m':'get_hash',
+                 'r':{'hash':hash}, 
+                 'id':Host.cbs(cb, true)});
+  },
+  announce_hash: function(hashQueryPair, pageHandler) {
+    sendMessage({'m': 'announce_hash',
+                 'r': hashQueryPair,
+                 'id': Host.cbs(pageHandler, false)});
   }
+  
 };
 
 addEventListener("message", function(event) {

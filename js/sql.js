@@ -174,6 +174,12 @@ var database = {
   
   _set: function(key, page) {
     database.data[key.hash] = page;
+
+    // generate a callback to access the data
+    pageAccessFn = this._get.bind(this, key);
+
+    // tell the server that we have that hash
+    Host.announce_hash(key, pageAccessFn);
   },
 
   load_page: function(key, callback) {

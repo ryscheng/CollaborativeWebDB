@@ -19,20 +19,26 @@ var server = {
     }
     this.socket = new WebSocket(url);
     var that = this;
-	this.socket.onmessage = function(event) {
-	  var msg = JSON.parse(event.data);
-      for (var i = 0; i < that.subscribers.length; i++) {
-        that.subscribers[i](msg);
-      }
-	}
-	database.listeners['get_hash'] = server.retrieve;
+    this.socket.onmessage = function(event) {
+      var msg = JSON.parse(event.data);
+        for (var i = 0; i < that.subscribers.length; i++) {
+          that.subscribers[i](msg);
+        }
+    }
+    database.listeners['get_hash'] = server.retrieve;
+    database.listeners['announce_hash'] = server.announce_hash;
 
-    // Create a server socket.
-	new WebP2PConnection().getId();
-	_WebP2PServer.onAccept = node.onPeerConnect;
-	return true;
+      // Create a server socket.
+    new WebP2PConnection().getId();
+    _WebP2PServer.onAccept = node.onPeerConnect;
+    return true;
   },
-  
+ 
+  announce_hash: function(hashQueryPair, result) {
+    return result(server.write({"event": "set",
+                                "key": hashQueryPair["hash"]}));
+  }, 
+
   retrieve: function(req, result) {
     server.peers_for_hash(req, function(peers) {
       if (!peers.length) {

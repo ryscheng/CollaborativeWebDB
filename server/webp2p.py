@@ -265,7 +265,7 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
           elif "event" in parsed["payload"] and parsed["payload"]["event"] == "set":
             if self.id != 0 and "key" in parsed["payload"]:
               key = parsed["payload"]["key"]
-              self.hashes.push(key)
+              self.hashes.append(key)
               if key in MessageHandler.hashes:
                 MessageHandler.hashes[key].append(self.id)
               else:
