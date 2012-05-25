@@ -117,7 +117,7 @@ var node = {
       }
     } else if (msg['from'] && msg['from'] != this.id) {
       if (this.edges[msg['from']]) {
-        this.edges[msg['from']].processSignalingMessage(msg['msg']);
+        this.edges[msg['from']].connect(msg['msg']);
         // Continue signalling a peer.
       } else if (msg['event'] && msg['event'] == 'announce') {
         // Initiate connection to a new peer.
@@ -157,9 +157,15 @@ var node = {
         } else {
           node.edges[msg].close();
           node.edges[msg] = connection;
+          connection.peer = msg;
           connection.onMessage = node.onPeerMessage.bind(node, msg);
           connection.onStateChange = node.onPeerStateChange.bind(node, msg);
         }
+      } else {
+        node.edges[msg] = connection;
+        connection.peer = msg;
+        connection.onMessage = node.onPeerMessage.bind(node, msg);
+        connection.onStateChange = node.onPeerStateChange.bind(node, msg);        
       }
     };
   },

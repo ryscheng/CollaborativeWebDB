@@ -31,6 +31,7 @@ var WebP2PConnection = function(id) {
   this.sid = id;
   this.state = id ? WebP2PConnectionState.CONNECTED : WebP2PConnectionState.NEW;
 
+  this.peer = id ? Math.random() : null;
   this._cbid = 0;
   this._cbr = {};
   window.addEventListener("message", this._receiveCommand.bind(this), false);
