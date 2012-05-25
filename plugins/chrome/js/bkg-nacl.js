@@ -25,12 +25,17 @@ function handleMessage(message_event) {
   if (result.request.command == COMMANDS.createsocket &&
     result.result == "PP_OK") {
     contentScripts[result.request.portname].sockets.push(result.socketId);
-  } else if (result.request.command == COMMANDS.listen &&
+  } else if (result.request.command == COMMANDS.createserversocket &&
     result.result == "PP_OK") {
-    contentScripts[result.request.portname].listening = true;
-  } else if (result.request.commands == COMMANDS.stoplistening &&
+    contentScripts[result.request.portname].listeners.push(result.ssocketId);
+  } else if (result.request.command == COMMANDS.destroy && 
     result.result == "PP_OK") {
-    contentScripts[result.request.portname].listening = false;
+    contentScripts[result.request.portname].sockets.splice(
+        contentScripts[result.request.portname].sockets.indexOf(result.request.socketId),1);
+  } else if (result.request.command == COMMANDS.destroyserversocket && 
+    result.result == "PP_OK") {
+    contentScripts[result.request.portname].listeners.splice(
+        contentScripts[result.request.portname].listeners.indexOf(result.request.ssocketId),1);
   }
   contentScripts[result.request.portname] &&
     contentScripts[result.request.portname].port.postMessage(result);
@@ -42,7 +47,7 @@ function ContentScriptConnection(port) {
   }
   
   this.sockets = [];
-  this.listening = false;
+  this.listeners = [];
 
   this.onMessage = function(msg) {
     msg.portname = port.name;
@@ -56,14 +61,13 @@ function ContentScriptConnection(port) {
     } else if (naclmodule == null) {
       port.postMessage({request: msg, error: 'NaCl module not loaded'});
     } else {
-      if (msg.command == COMMANDS.destroy) {
-        var sid = msg.socketId;
-        for (var i = 0; i < this.sockets.length; i++) {
-          if(this.sockets[i] == sid) {
-            this.sockets.splice(i,1);
-            break;
-          }
-        }
+      if (msg.command.socketId && this.sockets.indexOf(msg.command.socketId) === -1) {
+        port.postMessage({request: msg, error: 'unrecognized socket'});
+        reutrn;
+      }
+      if (msg.command.ssocketId && this.listeners.indexOf(msg.command.ssocketId) === -1) {
+        port.postMessage({request: msg, error: 'unrecognized ssocket'});
+        return;
       }
       naclmodule.postMessage(JSON.stringify(msg));
     }
@@ -77,9 +81,8 @@ function ContentScriptConnection(port) {
       for (var i = 0; i < this.sockets.length; i++) {
         naclmodule.postMessage(JSON.stringify({command: COMMANDS.destroy, socketId: this.sockets[i]}));
       }
-      if (this.listening) {
-        console.log('told nacl to stop listening');
-        naclmodule.postMessage(JSON.stringify({command: COMMANDS.stoplistening}));
+      for (var i = 0; i < this.listeners.length; i++) {
+        naclmodule.postMessage(JSON.stringify({command: COMMANDS.destroyserversocket, ssocketId: this.listeners[i]}));
       }
     }
     delete contentScripts[this.port.name];
