@@ -164,7 +164,7 @@ var node = {
     };
   },
   onPeerStateChange: function(peer, state) {
-    if (state == STOPPING) {
+    if (state == WebP2PConnectionState.STOPPING) {
       var pc = this.edges[peer];
       delete this.edges[peer];
       pc.onMessage = null;
