@@ -111,6 +111,7 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
       break;
     case WEBP2P_DESTROYSERVERSOCKET:
       ssocketId = atoi(this->JsonGet(message, "\"ssocketId\"").c_str());
+      server_sockets_[ssocketId]->StopListening();
       server_sockets_.erase(ssocketId);
       this->Callback(PP_OK, id, &ret);
       break;
