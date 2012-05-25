@@ -29,7 +29,7 @@ var server = {
 
     // Create a server socket.
 	new WebP2PConnection().getId();
-	_WebP2PServer.onAccept = node.onPeerConnect;
+	window._WebP2PServer.onAccept = node.onPeerConnect;
 	return true;
   },
   

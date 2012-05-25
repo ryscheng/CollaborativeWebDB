@@ -49,8 +49,8 @@ var p2p_pane = {
 
             // Let the extension respond, then restart the server.
             window.setTimeout(function() {
-              _WebP2PServer.state = 0;
-              _WebP2PServer.connect();
+              window._WebP2PServer.state = 0;
+              window._WebP2PServer.connect();
             }, 10);
         }, false);
     },

@@ -25,7 +25,7 @@ var WebP2PConnectionSettings = {
   DEFAULT_PORT: 9229,
 };
 
-var _WebP2PServer = null;
+window._WebP2PServer = null;
 
 var WebP2PConnection = function(id) {
   this.sid = id;
@@ -38,14 +38,14 @@ var WebP2PConnection = function(id) {
 };
 
 WebP2PConnection.prototype.getId = function() {
-  if (!_WebP2PServer) {
-    _WebP2PServer = new WebP2PConnection(null);
-    _WebP2PServer.connect();
+  if (!window._WebP2PServer) {
+    window._WebP2PServer = new WebP2PConnection(null);
+    window._WebP2PServer.connect();
   }
-  if (_WebP2PServer.state != WebP2PConnectionState.LISTENING) {
+  if (window._WebP2PServer.state != WebP2PConnectionState.LISTENING) {
     return undefined;
   } else {
-    return _WebP2PServer._addr + "|" + WebP2PConnectionSettings.DEFAULT_PORT;
+    return window._WebP2PServer._addr + "|" + WebP2PConnectionSettings.DEFAULT_PORT;
   }
 }
 
@@ -58,10 +58,10 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
   var host = parts[0];
   var port = parts[1];
 
-  if (!_WebP2PServer) {
-    _WebP2PServer = new WebP2PConnection(null);
-    _WebP2PServer.connect();
-  } else if (this == _WebP2PServer) {
+  if (!window._WebP2PServer) {
+    window._WebP2PServer = new WebP2PConnection(null);
+    window._WebP2PServer.connect();
+  } else if (this == window._WebP2PServer) {
     console.log('starting listener');
     this._onListen = [];
     this._transition(WebP2PConnectionState.CONNECTING);
@@ -108,7 +108,7 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
   this._transition(WebP2PConnectionState.CONNECTING);
   var connectFunction = function(cb) {
     this._createSocket(function(msg) {
-      if (msg.socketId) {
+      if (msg.socketId !== undefined) {
         this.sid = msg.socketId;
         this._connect(host, port, function(msg) {
           if (msg.result == "PP_OK") {
@@ -125,8 +125,8 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
       }
     }.bind(this));
   }.bind(this);
-  if (_WebP2PServer.state != WebP2PConnectionState.LISTENING) {
-    _WebP2PServer._onListen.push(connectFunction.bind(this, done));
+  if (window._WebP2PServer.state != WebP2PConnectionState.LISTENING) {
+    window._WebP2PServer._onListen.push(connectFunction.bind(this, done));
   } else {
     connectFunction(done);
   }
