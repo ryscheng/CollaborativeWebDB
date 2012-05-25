@@ -152,7 +152,7 @@ var node = {
   get_connected: function(peers) {
     var filtered = peers.filter(function(peer) {
       return this.edges[peer] !== undefined && this.edges[peer].state == WebP2PConnectionState.CONNECTED;
-    });
+    }.bind(this));
     return filtered.length? filtered[0] : false;
   },
   onPeerConnect: function(connection) {
