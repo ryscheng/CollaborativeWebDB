@@ -19,6 +19,9 @@ var functions = {
         data_sent = true;
       }
     }
+      if (query.search(";") < 0) {
+	  query = query + ";"
+      }
     var ret = database.execute(query, on_data, only_train, page);
     if (data_sent) {
       return {'id': id, 'ret': ret};
