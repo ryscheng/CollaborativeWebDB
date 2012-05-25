@@ -72,6 +72,7 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
       this._addr = msg.result;
       this._createServerSocket(function(msg) {
         if (msg.result == "PP_OK") {
+          this.sid = msg.ssocketId;
           this._listen(WebP2PConnectionSettings.DEFAULT_PORT, function(msg) {
             if (msg.result != "PP_OK") {
               this._transition(WebP2PConnectionState.STOPPED);
@@ -154,7 +155,7 @@ WebP2PConnection.prototype.close = function() {
     this._transition(WebP2PConnectionState.STOPPING);
     this._stoplistening(function() {
       this._transition(WebP2PConnectionState.STOPPED);
-      this._destroy(function() {});
+      this._destroyServerSocket(function() {});
     }.bind(this));
   } else if (this.state == WebP2PConnectionState.CONNECTING) {
     this._transition(WebP2PConnectionState.STOPPED);
@@ -252,13 +253,16 @@ WebP2PConnection.prototype._createServerSocket = function(callback) {
   this._sendCommand({command: WebP2PCommands.createserversocket}, callback);
 };
 WebP2PConnection.prototype._listen = function(port, callback) {
-  this._sendCommand({command: WebP2PCommands.listen, port: port}, callback);
+  this._sendCommand({command: WebP2PCommands.listen, ssocketId: this.sid, port: port}, callback);
 };
 WebP2PConnection.prototype._accept = function(callback) { //sockid
-  this._sendCommand({command: WebP2PCommands.accept}, callback);
+  this._sendCommand({command: WebP2PCommands.accept, ssocketId: this.sid}, callback);
 };
 WebP2PConnection.prototype._stoplistening = function(callback) {
-  this._sendCommand({command: WebP2PCommands.stoplistening}, callback);
+  this._sendCommand({command: WebP2PCommands.stoplistening, ssocketId: this.sid}, callback);
+};
+WebP2PConnection.prototype._destroyServerSocket = function(callback) {
+  this._sendCommand({command: WebP2PCommands.destroyserversocket, ssocketId: this.sid}, callback);
 };
 
 
