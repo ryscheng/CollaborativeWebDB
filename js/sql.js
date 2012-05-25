@@ -117,12 +117,17 @@ var database = {
         var result = database._get(key);
         var cols = result['cols'];
         var rows = result['rows'];
-        for (var r = 0; r < rows.length; r++) {
-          for (var c = 0; c < rows[r].length; c++) {
-            rows[r][c] = {'column':cols[c], 'value':rows[r][c]};
+
+        var copy = [];
+        for (var i = 0; i < rows.length; i++) {
+          copy.push(rows[i].slice());
+        }
+        for (var r = 0; r < copy.length; r++) {
+          for (var c = 0; c < copy[r].length; c++) {
+            copy[r][c] = {'column':cols[c], 'value':copy[r][c]};
           }
         }
-        callback(rows, null);
+        callback(copy, null);
       });
     }
   },
@@ -160,7 +165,7 @@ var database = {
   
   get_complex_page_key: function(query) {
     return {"query": query,
-            "hash": CryptoJS.MD5(query.trim())};
+            "hash": CryptoJS.MD5(query.trim()).toString()};
   },
   
   _get: function(key) {
@@ -169,6 +174,12 @@ var database = {
   
   _set: function(key, page) {
     database.data[key.hash] = page;
+
+    // generate a callback to access the data
+    pageAccessFn = this._get.bind(this, key);
+
+    // tell the server that we have that hash
+    Host.announce_hash(key, pageAccessFn);
   },
 
   load_page: function(key, callback) {

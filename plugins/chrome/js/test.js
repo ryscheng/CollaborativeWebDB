@@ -1,4 +1,5 @@
 init();
+var ssocketId;
 
 function init() {
   console.log("Test Init()");
@@ -15,22 +16,26 @@ function buttonClick() {
   var connection = new PeerConnection();
   connection.getPublicIp(function (msg) {
     console.log(JSON.stringify(msg));
-    connection.createServerSocket(function(msg) {
+    connection.createServerSocket(function (msg) {
       console.log("CreateServerSocket:"+JSON.stringify(msg));
-      connection.listen(function (msg) {
+      ssocketId = msg.ssocketId;
+      connection.listen(ssocketId, function (msg) {
         console.log("ServerListen:"+JSON.stringify(msg));
-        connection.accept(function (msg) {
+        connection.accept(ssocketId, function (msg) {
           console.log("ServerAccept:"+JSON.stringify(msg));
           connection.read(msg.socketId, 17, function(msg) {
             console.log("ServerRead:"+JSON.stringify(msg));
             connection.disconnect(msg.request.socketId, function (msg) {
-              console.log("StopListening:"+JSON.stringify(msg));
-            });
-            connection.destroy(msg.request.socketId, function (msg) {
-              console.log("StopListening:"+JSON.stringify(msg));
-            });
-            connection.stoplistening(function (msg) {
-              console.log("StopListening:"+JSON.stringify(msg));
+              console.log("ServerDisconnect:"+JSON.stringify(msg));
+              connection.destroy(msg.request.socketId, function (msg) {
+                console.log("ServerDestroy:"+JSON.stringify(msg));
+                connection.stopListening(ssocketId, function (msg) {
+                  console.log("ServerStopListening:"+JSON.stringify(msg));
+                  connection.destroyServerSocket(ssocketId, function (msg) {
+                    console.log("ServerDestroyServerSocket:"+JSON.stringify(msg));
+                  });
+                });
+              });
             });
           });
         });
@@ -38,7 +43,7 @@ function buttonClick() {
           console.log("CreateClientSocket:"+JSON.stringify(msg));
           connection.connect(msg.socketId, "127.0.0.1", 9229, function (msg) {
             console.log("ClientConnect:"+JSON.stringify(msg));
-            connection.write(msg.request.socketId, "HELLO FROM CLIENT", function (msg) {
+              connection.write(msg.request.socketId, "HELLO FROM CLIENT", function (msg) {
               console.log("ClientWrite:"+JSON.stringify(msg));
               connection.disconnect(msg.request.socketId, function(msg) {
                 console.log("ClientDisconnect:"+JSON.stringify(msg));
@@ -48,7 +53,7 @@ function buttonClick() {
               });
             });
           });
-        })
+        });
       });
     });
   });

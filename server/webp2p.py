@@ -65,7 +65,10 @@ class EvaluationHandler(tornado.web.RequestHandler):
           EvalWSHandler.stop_evaluation()
         elif cmd == "stats":
           logging.info("sending stats")
-          jsonStats = tornado.escape.json_encode(EvalWSHandler.evaluationRuns)
+          logging.info(EvalWSHandler.evaluatorStats)
+          jsonStats = tornado.escape.json_encode({
+            "serverStats": EvalWSHandler.evaluationRuns, 
+            "clientStats": EvalWSHandler.evaluatorStats});
           self.write(jsonStats)
 
     @classmethod
@@ -116,7 +119,8 @@ class DataHandler(tornado.web.RequestHandler):
             stats["counts"][timeBin] = 1
 
         # actual data handling
-        q = urllib.unquote_plus(self.get_argument('q'))
+        q = urllib.unquote(self.get_argument('q'))
+        logging.info(q)
         retval = {}
         if self.db:
             c = self.db.cursor()
@@ -146,6 +150,7 @@ class DataHandler(tornado.web.RequestHandler):
                 
 class EvalWSHandler(tornado.websocket.WebSocketHandler):
   evaluators = dict();
+  evaluatorStats = dict();
   started = False
 
   evaluationRuns = []
@@ -155,7 +160,7 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
     return True
     
   def open(self):
-    self.id = uuid.uuid4()
+    self.id = str(uuid.uuid4())
     EvalWSHandler.evaluators[self.id] = self
   
   def on_close(self):
@@ -167,10 +172,18 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
     # do something with the message
 
     parsed = tornado.escape.json_decode(message)
-    if "count" in parsed:
-      logging.info("count: %d" % (parsed["count"]))
-    if "time" in parsed:
-      logging.info("time: %f" % (parsed["time"]))
+    if self.id in EvalWSHandler.evaluatorStats:
+      EvalWSHandler.evaluatorStats[self.id].append(parsed)
+    else:
+      EvalWSHandler.evaluatorStats[self.id] = [parsed];
+
+    
+    #if "count" in parsed:
+    #  logging.info("count: %d" % (parsed["count"]))
+    #if "time" in parsed:
+    #  logging.info("time: %f" % (parsed["time"]))
+
+
 
 
   @classmethod
@@ -252,7 +265,7 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
           elif "event" in parsed["payload"] and parsed["payload"]["event"] == "set":
             if self.id != 0 and "key" in parsed["payload"]:
               key = parsed["payload"]["key"]
-              self.hashes.push(key)
+              self.hashes.append(key)
               if key in MessageHandler.hashes:
                 MessageHandler.hashes[key].append(self.id)
               else:

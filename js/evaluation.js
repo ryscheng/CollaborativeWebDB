@@ -63,11 +63,18 @@ var evaluation = {
     }
     this.started = true;
     this.stats = {
+      startTime: null,
+      endTime: null,
       count: 0,
       time: 0,
       counts: {},
-      times: {}
+      times: {},
+      peerContacts: 0,
+      peers: {},
     };
+    // convert to seconds
+    this.stats.startTime = (new Date().getTime()) / 1000;
+
     console.debug('starting testing');
     this.runQuery();
   },
@@ -75,6 +82,8 @@ var evaluation = {
   stopEvaluation: function() {
     this.started = false;
     console.debug('stoping testing');
+    // convert to seconds
+    this.stats.endTime = (new Date().getTime()) / 1000;
 
     // report stats back to server
     this.socket.send(JSON.stringify(this.stats));
@@ -89,8 +98,8 @@ var evaluation = {
       this.stopEvaluation();
       return;
     }
-    this.stats.count++;
-    this.startTime = new Date().getTime();
+    // convert to seconds
+    this.queryStartTime = (new Date().getTime()) / 1000
     database.exec(query, false, this.data_cb.bind(this), 
                                 this.completion_cb.bind(this), 1);
   },
@@ -108,13 +117,39 @@ var evaluation = {
     }
     else {
       //ignore data, start the next query
-      var endTime = new Date().getTime();
-      var elapsed = endTime - this.startTime;
+      // convert to seconds
+      var endTime = (new Date().getTime()) / 1000;
+      var elapsed = endTime - this.queryStartTime;
       this.stats.time += elapsed;
+
+      var timeBin = Math.floor(this.queryStartTime);
+      timeBin = timeBin - (timeBin % this.binSize);
+      
+      if (this.stats.times[timeBin]) {
+        this.stats.times[timeBin] += elapsed;
+      }
+      else {
+        this.stats.times[timeBin] = elapsed;
+      }
+      this.stats.count++;
+      if (this.stats.counts[timeBin]) {
+        this.stats.counts[timeBin]++;
+      }
+      else { 
+        this.stats.counts[timeBin] = 1;
+      }
 
       this.runQuery();
     }
+  },
+  
+  countPeer: function(peer) {
+    if (this.started && this.stats) {
+      this.stats.peerContacts++;
+      
+    }
   }
+
 
 }
 
