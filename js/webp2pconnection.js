@@ -50,6 +50,7 @@ WebP2PConnection.prototype.getId = function() {
 }
 
 WebP2PConnection.prototype.connect = function(otherid, done) {
+  console.log('asked to connect to ' + otherid);
   if (this.state != WebP2PConnectionState.NEW) {
     return;
   }
@@ -61,6 +62,7 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
     _WebP2PServer = new WebP2PConnection(null);
     _WebP2PServer.connect();
   } else if (this == _WebP2PServer) {
+    console.log('starting listener');
     this._onListen = [];
     this._transition(WebP2PConnectionState.CONNECTING);
     this._getPublicIp(function(msg) {
@@ -100,6 +102,9 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
     return;
   }
 
+  if (!done) {
+    done = function() {};
+  }
   this._transition(WebP2PConnectionState.CONNECTING);
   var connectFunction = function(cb) {
     this._createSocket(function(msg) {
