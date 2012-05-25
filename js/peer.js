@@ -34,10 +34,12 @@ var server = {
 	return true;
   },
  
-  announce_hash: function(hashQueryPair, result) {
-    return result(server.write({"event": "set",
-                                "key": hashQueryPair["hash"]}));
-  }, 
+  announce_hash: function(hashQueryPair, dataHandler) {
+    log.write("Providing " + hashQueryPair);
+    if (server.write({"event": "set","key": hashQueryPair["hash"]})) {
+      server.providers[hashQueryPair["hash"]] = true;
+    }                      
+  },
 
   retrieve: function(req, result) {
     server.peers_for_hash(req, function(peers) {
@@ -86,12 +88,6 @@ var server = {
       peer.send(JSON.stringify({"event":"get","id":datakey,"key":key}));
     }
   },
-  provide: function(key, getter) {
-    log.write("Providing " + key);
-    if(server.write({"event":"set","key":key})) {
-      server.providers[key] = getter;
-    }
-  }
 };
 
 var node = {
@@ -191,17 +187,19 @@ var node = {
     }
     if (!mo['event']) return;
     if (mo['event'] == 'get') {
-      var getter = server.providers[mo['key']];
-      if (getter) {
-        getter(function(data) {
+      var key = server.providers[mo['key']];
+      if (key) {
+        getProvidedData(key, function(data) {
           log.write('Sending cached data key ' + mo['key'] + ' to ' + peer);
           node.edges[peer].send(JSON.stringify({'event':'resp', 'id':mo['id'], 'status':true, 'data':data}));        
         });
-      } else {
+      } 
+      else {
         log.write('Asked to provide unavailable data key ' + mo['key'] + ' for ' + peer);
         this.edges[peer].send(JSON.stringify({'event':'resp', 'id':mo['id'], 'status':false}));
       }
-    } else if (mo['event'] == 'resp') {
+    } 
+    else if (mo['event'] == 'resp') {
       var waiters = server.waiters[mo['id']];
       if (waiters) {
         delete server.waiters[mo['id']];

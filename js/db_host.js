@@ -6,6 +6,8 @@ var database = {
   data_cbs: [],
   completion_cbs: [],
   backing_cbs: [],
+  provided_cbs: {}, 
+  pcb_id: 0,
   status_cb: null,
   exec: function(query, only_train, data_cb, completion_cb, page) {
     var i = database.c++ || 0;
@@ -19,6 +21,12 @@ var database = {
       database.worker.contentWindow.postMessage(JSON.stringify({'m':'q', 'a':[]}), "*");
     }
   },
+  getProvidedData: function(key, cb) {
+    database.provided_cbs[database.pcb_id] = cb; 
+    database.worker.contentWindow.postMessage(JSON.stringify({'m':'get_provided', 'a':key, 'id':database.pcb_id}), "*");
+    database.pcb_id++;
+  },
+
   init: function(cb) {
     if(!database.worker) {
       database.worker = document.createElement('iframe');
@@ -64,7 +72,12 @@ var database = {
           database.listeners[data['m']](data['r'], function(arg) {
             database.worker.contentWindow.postMessage(JSON.stringify({'cb':id,'r':arg}), "*");
           });
-        } else {
+        }
+        else if (data['m'] == 'get_provided') {
+          var pcb_id = data['id'];
+          database.provided_cbs[pcb_id](data['r']);
+        }
+        else {
           database.status_cb && database.status_cb(data['r']);
         }
       } else {
