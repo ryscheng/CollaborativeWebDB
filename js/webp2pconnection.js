@@ -34,6 +34,9 @@ var WebP2PConnection = function(id) {
   this._cbid = 0;
   this._cbr = {};
   window.addEventListener("message", this._receiveCommand.bind(this), false);
+  if (this.state == WebP2PConnectionState.CONNECTED) {
+    this._receive();
+  }
 };
 
 WebP2PConnection.prototype.getId = function() {
@@ -55,7 +58,7 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
   }
   var parts = otherid ? otherid.split("|") : [0,0];
   var host = parts[0];
-  var port = parts[1];
+  var port = parseInt(parts[1]);
 
   if (!window._WebP2PServer) {
     window._WebP2PServer = new WebP2PConnection(null);
@@ -113,6 +116,7 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
         this._connect(host, port, function(msg) {
           if (msg.result == "PP_OK") {
             this._transition(WebP2PConnectionState.CONNECTED);
+            this._receive();
           } else {
             console.log(msg);
             this._transition(WebP2PConnectionState.STOPPED);
