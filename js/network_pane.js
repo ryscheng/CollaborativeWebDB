@@ -86,6 +86,13 @@ var network_pane = {
       this.links.push({"source":this.nodes.length - 1, "target":1});
       this.restore();
     },
+    channel_node: function(id) {
+      var idx = this.get_node_idx(id);
+      if (idx == -1) {
+        return;
+      }
+      this.links.push({"source":idx, "target":0});
+    },
     drop_node: function(id) {
       var idx = this.get_node_idx(id);
       if (idx == -1) {

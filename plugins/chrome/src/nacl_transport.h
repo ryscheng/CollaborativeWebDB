@@ -42,6 +42,7 @@ class NaclTransportInstance : public pp::Instance {
     virtual ~NaclTransportInstance(){
       delete log_;
       reqs_.clear();
+      ios_.clear();
       socket_res_.clear();
       sockets_.clear();
       server_sockets_.clear();
@@ -51,16 +52,19 @@ class NaclTransportInstance : public pp::Instance {
     void Callback(int32_t result, int32_t id, int32_t* pres);
     void NewServerSocketCallback(int32_t result, int32_t id, int32_t* pres);
     void NewSocketCallback(int32_t result, int32_t id, bool from_res, int32_t* pres);
+    void WriteCallback(int32_t result, int32_t id, int32_t* pres);
     void ReadCallback(int32_t result, int32_t id, int32_t numBytes, int32_t* pres);
   private:
     Logger* log_;
     pp::CompletionCallbackFactory<NaclTransportInstance, ThreadSafeRefCount> factory_;
-    std::map<int32_t, std::string> reqs_;
+    std::map<int32_t, std::string*> reqs_;
+    std::map<int32_t, std::string*> ios_;
     std::map<int32_t, pp::TCPServerSocketPrivate*> server_sockets_;
     std::map<int32_t, PP_Resource*> socket_res_;
     std::map<int32_t, pp::TCPSocketPrivate*> sockets_;
 
-    std::string JsonGet(std::string json, std::string key);
+    std::string JsonGetString(std::string* json, std::string key);
+    double JsonGetNumber(std::string* json, std::string key);
 
 };
 

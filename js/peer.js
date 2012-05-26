@@ -34,10 +34,12 @@ var server = {
 	return true;
   },
  
-  announce_hash: function(hashQueryPair, result) {
-    return result(server.write({"event": "set",
-                                "key": hashQueryPair["hash"]}));
-  }, 
+  announce_hash: function(hashQueryPair, dataHandler) {
+    log.write("Providing " + hashQueryPair);
+    if (server.write({"event": "set","key": hashQueryPair["hash"]})) {
+      server.providers[hashQueryPair["hash"]] = true;
+    }                      
+  },
 
   retrieve: function(req, result) {
     server.peers_for_hash(req, function(peers) {
@@ -86,12 +88,6 @@ var server = {
       peer.send(JSON.stringify({"event":"get","id":datakey,"key":key}));
     }
   },
-  provide: function(key, getter) {
-    log.write("Providing " + key);
-    if(server.write({"event":"set","key":key})) {
-      server.providers[key] = getter;
-    }
-  }
 };
 
 var node = {
@@ -153,7 +149,7 @@ var node = {
     var filtered = peers.filter(function(peer) {
       return this.edges[peer] !== undefined && this.edges[peer].state == WebP2PConnectionState.CONNECTED;
     }.bind(this));
-    return filtered.length? filtered[0] : false;
+    return filtered.length? this.edges[filtered[0]] : false;
   },
   onPeerConnect: function(connection) {
     connection.onMessage = function(msg) {
@@ -161,12 +157,16 @@ var node = {
         if (node.edges[msg].state == WebP2PConnectionState.CONNECTED && msg < node.id) {
           connection.close();
         } else {
+          if (node.eges[msg].state != WebP2PConnectionState.CONNECTED) {
+            network_pane.channel_node(msg);
+          }
           node.edges[msg].close();
           node.edges[msg] = connection;
           connection.onMessage = node.onPeerMessage.bind(node, msg);
           connection.onStateChange = node.onPeerStateChange.bind(node, msg);
         }
       } else {
+        network_pane.channel_node(msg);
         node.edges[msg] = connection;
         connection.onMessage = node.onPeerMessage.bind(node, msg);
         connection.onStateChange = node.onPeerStateChange.bind(node, msg);        
@@ -191,17 +191,19 @@ var node = {
     }
     if (!mo['event']) return;
     if (mo['event'] == 'get') {
-      var getter = server.providers[mo['key']];
-      if (getter) {
-        getter(function(data) {
+      var key = server.providers[mo['key']];
+      if (key) {
+        database.getProvidedData(key, function(data) {
           log.write('Sending cached data key ' + mo['key'] + ' to ' + peer);
           node.edges[peer].send(JSON.stringify({'event':'resp', 'id':mo['id'], 'status':true, 'data':data}));        
         });
-      } else {
+      } 
+      else {
         log.write('Asked to provide unavailable data key ' + mo['key'] + ' for ' + peer);
         this.edges[peer].send(JSON.stringify({'event':'resp', 'id':mo['id'], 'status':false}));
       }
-    } else if (mo['event'] == 'resp') {
+    } 
+    else if (mo['event'] == 'resp') {
       var waiters = server.waiters[mo['id']];
       if (waiters) {
         delete server.waiters[mo['id']];
@@ -220,6 +222,7 @@ var node = {
           if (pc.state != WebP2PConnectionState.CONNECTED) {
             server.write({"to":id, "msg": pc.getId()});
           } else {
+            network_pane.channel_node(id);
             pc.send(node.id);
           }
         });

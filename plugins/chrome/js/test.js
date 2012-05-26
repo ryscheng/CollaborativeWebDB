@@ -1,10 +1,7 @@
 init();
 var ssocketId;
-//146 characters
-//var clientToServerMsg = "HELLO! THIS IS THE STORY OF MY LIFE. I WAS BORN AS A YOUNG BOY. THEN A BUNCH OF STUFF HAPPENED. ESSENTIALLY, THIS IS A LONG STORY. LONG LONG LONG";
-var clientToServerMsg = "Hi";
-//var msgLength = 146;
-var msgLength = 2;
+var clientToServerMsg = "HELLO! THIS IS THE STORY OF MY LIFE. I WAS BORN AS A YOUNG BOY. THEN A BUNCH OF STUFF HAPPENED. ESSENTIALLY, THIS IS A LONG STORY. LONG LONG LONG";
+var msgLength = 145;
 
 function init() {
   console.log("Test Init()");

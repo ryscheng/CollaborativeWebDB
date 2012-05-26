@@ -19,6 +19,9 @@ var functions = {
         data_sent = true;
       }
     }
+      if (query.search(";") < 0) {
+	  query = query + ";"
+      }
     var ret = database.execute(query, on_data, only_train, page);
     if (data_sent) {
       return {'id': id, 'ret': ret};
@@ -34,7 +37,15 @@ var functions = {
       t[table] = {name: d.name, colnames: d.colnames, cols: d.cols};
     }
     return t;
+  },
+  get_provided: function(hash) {
+    var data = database._get({"hash":hash});  
+    //Host.log('get_provided has been called, calling database._get() on '+hash);
+    //Host.log('data was '+data);
+    
+    return data;
   }
+  
 };
 
 var Host = {
@@ -49,7 +60,7 @@ var Host = {
       if (deleteAfterCalling) {
         delete Host._cbr[id]; 
       }
-      cb(arg);
+      return cb(arg);
     };
     return id;
   },
@@ -68,17 +79,29 @@ var Host = {
     sendMessage({'m': 'announce_hash',
                  'r': hashQueryPair,
                  'id': Host.cbs(pageHandler, false)});
-  }
-  
+  },
+
 };
 
 addEventListener("message", function(event) {
   try {
     var data = JSON.parse(event.data);
     if (data && data['m'] && data['a']) {
+
       var func = functions[data['m']];
       var resp = func(data['a']);
-      sendMessage({'m':data['m'], 'r':resp});
+      var payload = {'m':data['m'], 'r':resp};
+      // include id for callback if they sent one
+      if (data['id'] !== undefined) {
+        payload['id'] = data['id'];
+      } 
+      if (data['m'] == 'get_provided') {
+        //Host.log('data m is '+data['m']);
+        //Host.log('data a is '+data['a']);
+        //Host.log('data id is '+data['id']);
+        //Host.log('resp is '+resp);
+      }
+      sendMessage(payload);
     } else if (data && data['cb'] !== undefined && data['r'] !== undefined) {
       Host._cbr[data['cb']](data['r']);
     } else {
