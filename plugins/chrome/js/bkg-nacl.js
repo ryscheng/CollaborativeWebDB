@@ -33,6 +33,7 @@ function ContentScriptConnection(port) {
   this.sockets = [];
   this.listeners = [];
   this.readwriteops = {};
+  this.readBuffer = "";
 
   this.onMessageFromApp = function(msg) {
     msg.portname = port.name;
@@ -70,6 +71,21 @@ function ContentScriptConnection(port) {
     } else if (msg.request.command == COMMANDS.destroyserversocket && msg.resultStr == "PP_OK") {
       this.listeners.splice(this.listeners.indexOf(msg.request.ssocketId),1);
     }
+    if (msg.request.command == COMMANDS.write && msg.result > 0 && msg.result < msg.request.data.length) {
+      msg.request.data = msg.request.data.substr(msg.result);
+      console.log("continuation of previous:" + JSON.stringify(msg.request));
+      naclmodule.postMessage(JSON.stringify(msg.request));
+      return;
+    } else if (msg.request.command == COMMANDS.read && msg.result > 0 &&  msg.result < msg.request.numBytes) {
+      msg.request.numBytes -= msg.result;
+      naclmodule.postMessage(JSON.stringify(msg.request));
+      this.readBuffer += msg.data;
+      return;
+    } else if (msg.request.command == COMMANDS.read && this.readBuffer.length) {
+      msg.data = this.readBuffer + msg.data;
+      this.readBuffer = "";
+    }
+
     this && this.port.postMessage(msg);
   };
   
