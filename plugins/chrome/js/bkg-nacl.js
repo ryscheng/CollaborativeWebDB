@@ -11,6 +11,22 @@ function init() {
   listener.addEventListener('message', handleMessage, true);
 }
 
+//Store port to a new application page
+function onContentScriptConnect(port) {
+  console.log("New Content script: " + port.name);
+  contentScripts[port.name] = new ContentScriptConnection(port);
+  port.onMessage.addListener(contentScripts[port.name].onMessageFromApp.bind(contentScripts[port.name]));
+  port.onDisconnect.addListener(contentScripts[port.name].onDisconnect.bind(contentScripts[port.name]));
+}
+
+//Called to inject content script into an application
+function onLoadRequest(req, sender, resp) {
+  if (req.to != 'bg') return;
+  var origin = sender.tab.url;
+  chrome.tabs.executeScript(sender.tab.tabId, {file: "js/contentscript.js"});
+}
+
+//Updates background page status field if NaCl module loads
 function moduleDidLoad() {
   var statusField = document.getElementById('nacl_status_field');
   if (statusField) {
@@ -19,6 +35,7 @@ function moduleDidLoad() {
   naclmodule = document.getElementById('nacl_transport');
 }
 
+//Forward messages from NaCl to correct application port
 function handleMessage(message_event) {
   console.log("from nacl: "+message_event.data);
   var result = JSON.parse(message_event.data);
@@ -27,9 +44,6 @@ function handleMessage(message_event) {
 
 function ContentScriptConnection(port) {
   this.port = port;
-  this.onRead = function(socketEvent) {
-  }
-  
   this.sockets = [];
   this.listeners = [];
   this.readwriteops = new Object();
@@ -37,6 +51,7 @@ function ContentScriptConnection(port) {
   this.onMessageFromApp = function(msg) {
     msg.portname = port.name;
     console.log("MSG:"+port.name+"::"+JSON.stringify(msg));
+    //This is the only operation not forwarded to NaCl and just done in JS
     if (msg.command == COMMANDS.getpublicip) {
       function parseDomForIp(dom) {
         var ip = dom.split("IP Address: ")[1].split("</body>")[0];
@@ -45,7 +60,7 @@ function ContentScriptConnection(port) {
       $.get(GETIPURL, {}, parseDomForIp);
     } else if (naclmodule == null) {
       port.postMessage({request: msg, error: 'NaCl module not loaded'});
-    } else {
+    } else { //Forbid access to another app's sockets
       if (msg.socketId && this.sockets.indexOf(msg.socketId) === -1) {
         port.postMessage({request: msg, error: 'unrecognized socket'});
         return;
@@ -59,6 +74,7 @@ function ContentScriptConnection(port) {
   };
 
   this.onMessageFromNacl = function (msg) {
+    //Declare ownership of sockets created by this application
     if (msg.request.command == COMMANDS.createsocket && msg.resultStr == "PP_OK") {
       this.sockets.push(msg.socketId);
     } else if (msg.request.command == COMMANDS.createserversocket && msg.resultStr == "PP_OK") {
@@ -102,6 +118,7 @@ function ContentScriptConnection(port) {
     }
   };
   
+  //Cleanup all sockets and server sockets from this application
   this.onDisconnect = function(evt) {
     console.log('Content script disconnected!');
     // clean up.
@@ -117,11 +134,6 @@ function ContentScriptConnection(port) {
   }
 }
 
-function onLoadRequest(req, sender, resp) {
-  if (req.to != 'bg') return;
-  var origin = sender.tab.url;
-  chrome.tabs.executeScript(sender.tab.tabId, {file: "js/contentscript.js"});
-}
 
 function requestPermissions(origin) {
   chrome.permissions.request({
@@ -131,9 +143,4 @@ function requestPermissions(origin) {
   });
 }
 
-function onContentScriptConnect(port) {
-  console.log("New Content script: " + port.name);
-  contentScripts[port.name] = new ContentScriptConnection(port);
-  port.onMessage.addListener(contentScripts[port.name].onMessageFromApp.bind(contentScripts[port.name]));
-  port.onDisconnect.addListener(contentScripts[port.name].onDisconnect.bind(contentScripts[port.name]));
-}
+

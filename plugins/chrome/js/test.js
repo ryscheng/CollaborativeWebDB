@@ -15,7 +15,7 @@ function init() {
 
 function buttonClick() {
   console.log("CLICK");
-  var connection = new PeerConnection();
+  var connection = new WebP2PWrapper();
   connection.getPublicIp(function (msg) {
     console.log(JSON.stringify(msg));
     connection.createServerSocket(function (msg) {
@@ -27,6 +27,8 @@ function buttonClick() {
           console.log("ServerAccept:"+JSON.stringify(msg));
           connection.read(msg.socketId, msgLength, function(msg) {
             console.log("ServerRead:"+JSON.stringify(msg));
+          connection.read(msg.request.socketId, msgLength, function(msg) {
+            console.log("ServerRead:"+JSON.stringify(msg));
             connection.disconnect(msg.request.socketId, function (msg) {
               console.log("ServerDisconnect:"+JSON.stringify(msg));
               connection.destroy(msg.request.socketId, function (msg) {
@@ -35,18 +37,20 @@ function buttonClick() {
                   console.log("ServerStopListening:"+JSON.stringify(msg));
                   connection.destroyServerSocket(ssocketId, function (msg) {
                     console.log("ServerDestroyServerSocket:"+JSON.stringify(msg));
-          });});});});});});
+        });});});});});});});
         connection.createSocket(function(msg) {
           console.log("CreateClientSocket:"+JSON.stringify(msg));
           connection.connect(msg.socketId, "127.0.0.1", 9229, function (msg) {
             console.log("ClientConnect:"+JSON.stringify(msg));
               connection.write(msg.request.socketId, clientToServerMsg, function (msg) {
                 console.log("ClientWrite:"+JSON.stringify(msg));
+              connection.write(msg.request.socketId, clientToServerMsg, function (msg) {
+                console.log("ClientWrite:"+JSON.stringify(msg));
                 connection.disconnect(msg.request.socketId, function(msg) {
                   console.log("ClientDisconnect:"+JSON.stringify(msg));
                   connection.destroy(msg.request.socketId, function(msg) {
                     console.log("ClientDestroy:"+JSON.stringify(msg));
-  });});});});});
+        });});});});});});
   });});});
 }
 
