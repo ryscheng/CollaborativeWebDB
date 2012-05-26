@@ -133,17 +133,18 @@ void NaclTransportInstance::Callback(int32_t result, int32_t id, int32_t* pres){
   char retStr[MAX_RESULT_SIZE];
   fprintf(stdout, "callback:%d:%s\n", id, reqs_[id].c_str());
   snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\"}", reqs_[id].c_str(), result, ppErrorToString(result));
-  log_->log(retStr);
   reqs_.erase(id);
+  log_->log(retStr);
 }
 
 void NaclTransportInstance::ReadCallback(int32_t result, int32_t id, int32_t numBytes, int32_t* pres){
   char retStr[MAX_RESULT_SIZE];
   fprintf(stdout, "callback:%d:%s\n", id, reqs_[id].c_str());
-  readBuf[numBytes] = '\0'; //Just in case?
+  readBuf[result] = '\0'; //Just in case?
+  //readBuf[numBytes] = '\0'; //Just in case?
   snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"data\":\"%s\"}", reqs_[id].c_str(), result, ppErrorToString(result), readBuf);
-  log_->log(retStr);
   reqs_.erase(id);
+  log_->log(retStr);
 }
 
 void NaclTransportInstance::NewServerSocketCallback(int32_t result, int32_t id, int32_t* pres){
@@ -151,8 +152,8 @@ void NaclTransportInstance::NewServerSocketCallback(int32_t result, int32_t id, 
   fprintf(stdout, "callback:%d:%s\n", id, reqs_[id].c_str());
   server_sockets_[id] = new pp::TCPServerSocketPrivate(this);
   snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"ssocketId\":%d}", reqs_[id].c_str(), result, ppErrorToString(result), id);
-  log_->log(retStr);
   reqs_.erase(id);
+  log_->log(retStr);
 }
 
 void NaclTransportInstance::NewSocketCallback(int32_t result, int32_t id, bool from_res, int32_t* pres){
@@ -164,10 +165,9 @@ void NaclTransportInstance::NewSocketCallback(int32_t result, int32_t id, bool f
     sockets_[id] = new pp::TCPSocketPrivate(this);
   }
   snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"socketId\":%d}", reqs_[id].c_str(), result, ppErrorToString(result), id);
-  log_->log(retStr);
   reqs_.erase(id);
+  log_->log(retStr);
 }
-
 
 
 //---------------------------------------------------------------------------------

@@ -32,7 +32,7 @@ function ContentScriptConnection(port) {
   
   this.sockets = [];
   this.listeners = [];
-  this.readwriteops = {};
+  this.readwriteops = new Object();
 
   this.onMessageFromApp = function(msg) {
     msg.portname = port.name;
@@ -70,7 +70,36 @@ function ContentScriptConnection(port) {
     } else if (msg.request.command == COMMANDS.destroyserversocket && msg.resultStr == "PP_OK") {
       this.listeners.splice(this.listeners.indexOf(msg.request.ssocketId),1);
     }
-    this && this.port.postMessage(msg);
+   
+    //Combine previous results if read or write
+    if (this.readwriteops.hasOwnProperty(msg.request.id)) {
+      var old = this.readwriteops[msg.request.id];
+      msg.request = old.request;
+      if (msg.request.command == COMMANDS.read) {
+        msg.data = old.data + msg.data;
+      }
+      if (msg.result >= 0) { //Leave errors intact
+        msg.result = old.result + msg.result;
+      }
+      delete this.readwriteops[msg.request.id];
+    }
+    //Return errors and completed results
+    if (msg.result < 0 ||
+          (msg.request.command != COMMANDS.read && msg.request.command != COMMANDS.write) ||
+          (msg.request.command == COMMANDS.read && msg.data.length >= msg.request.numBytes) ||
+          (msg.request.command == COMMANDS.write && msg.request.data.length <= msg.result)) {
+      this && this.port.postMessage(msg);
+    } else { //Request again
+      this.readwriteops[msg.request.id] = msg;
+      var newReq = JSON.parse(JSON.stringify(msg.request));
+      if (newReq.command == COMMANDS.read) {
+        newReq.numBytes = msg.request.numBytes-msg.data.length;
+      } else if (newReq.command == COMMANDS.write) {
+        newReq.data = newReq.data.substr(msg.result);
+      }
+      console.log("Try again:"+JSON.stringify(newReq));
+      naclmodule.postMessage(JSON.stringify(newReq));
+    }
   };
   
   this.onDisconnect = function(evt) {
