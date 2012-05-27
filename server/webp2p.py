@@ -192,7 +192,11 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
     #  logging.info("time: %f" % (parsed["time"]))
 
 
-
+  @classmethod
+  def init(self):
+    if os.path.exists(options.data):
+      EvalWSHandler.db = sqlite3.connect(options.data)
+      EvalWSHandler.engine = querygen.engine.Engine(EvalWSHandler.db)
 
   @classmethod
   def start_evaluation(self):
@@ -231,10 +235,9 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
   @classmethod
   def generateQueries(self):
     count = options.querySetSize
-    engine = querygen.engine.Engine(EvalWSHandler.db)
     queries = []
     for i in range(count):
-      queries.append(engine.getQuery())
+      queries.append(EvalWSHandler.engine.getQuery())
     return queries
 
 
@@ -311,8 +314,7 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
 
 def main():
     tornado.options.parse_command_line()
-    if os.path.exists(options.data):
-      EvalWSHandler.db = sqlite3.connect(options.data)
+    EvalWSHandler.init()
     app = Application()
     app.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()
