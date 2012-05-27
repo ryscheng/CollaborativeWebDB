@@ -193,11 +193,11 @@ var node = {
     if (mo['event'] == 'get') {
       var key = server.providers[mo['key']];
       if (key) {
-        database.getProvidedData(key, function(data) {
+        database.getProvidedData(mo['key'], function(data) {
           log.write('Sending cached data key ' + mo['key'] + ' to ' + peer);
           node.edges[peer].send(JSON.stringify({'event':'resp', 'id':mo['id'], 'status':true, 'data':data}));        
         });
-      } 
+      }
       else {
         log.write('Asked to provide unavailable data key ' + mo['key'] + ' for ' + peer);
         this.edges[peer].send(JSON.stringify({'event':'resp', 'id':mo['id'], 'status':false}));
