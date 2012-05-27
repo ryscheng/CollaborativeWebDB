@@ -1,4 +1,5 @@
 *.o
 *.nexe
 .*.swp
+*.pyc
 server/data.sqlite3
