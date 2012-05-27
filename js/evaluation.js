@@ -6,6 +6,8 @@ var evaluation = {
   binSize: 5, // bin size in seconds of timeseries 
   stats: {},
 
+  queries: [],
+
   write: function(obj) {
     if (!this.socket) {
       return false;
@@ -31,6 +33,17 @@ var evaluation = {
       else if (msg.command == "stop") {
         that.stopEvaluation();
       }
+      else if (msg.command == "queries") {
+        if (that.started) {
+          return;
+        }
+        if (msg.queries !== undefined) {
+            console.debug("parsing "+msg.queries);
+            that.queries = JSON.parse(msg.queries);
+            console.debug("evaluation.queries is ", that.queries);
+
+        }
+      }
       //console.debug('received evaluation message: ', event);
 
     }
@@ -38,29 +51,10 @@ var evaluation = {
   },
 
   nextQuery: function() {
-    return "SELECT * FROM my_table";
+    return this.queries.pop() || null;
   },
 
-  createMyTable: function() {
-    // install our own table to run test queries over
-    var testCreateQuery = "create table my_table (id int, test text); insert into my_table VALUES(1, 'text');    insert into my_table VALUES(1, 'text');    insert into my_table VALUES(1, 'text');    insert into my_table VALUES(1, 'text');    insert into my_table VALUES(1, 'text');    insert into my_table VALUES(1, 'text');    insert into my_table VALUES(1, 'text');    insert into my_table VALUES(1, 'text');    insert into my_table VALUES(1, 'text');    insert into my_table VALUES(1.5, 'text');    insert into my_table VALUES(2, 'text');    insert into my_table VALUES(2, 'text');    insert into my_table VALUES(2, 'text');    insert into my_table VALUES(2, 'text');    insert into my_table VALUES(2, 'text');";
-
-    var that = this;
-    database.exec(
-       testCreateQuery, false,
-       function(data, error) {},
-       function(data, error) { 
-         that.myTableCreated = true; 
-         console.debug("my_table created"); 
-         that.startEvaluation(); }
-    );
-  }, 
-
   startEvaluation: function() {
-    if (!this.myTableCreated) {
-      this.createMyTable();
-      return;
-    }
     this.started = true;
     this.stats = {
       startTime: null,
@@ -94,6 +88,7 @@ var evaluation = {
       return; // cut off the execution
     }
     var query = this.nextQuery();
+    console.debug("next query is ", query);
     if (query == null) {
       this.stopEvaluation();
       return;
