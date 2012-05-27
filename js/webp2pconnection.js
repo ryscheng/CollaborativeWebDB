@@ -267,18 +267,18 @@ WebP2PConnection.prototype._destroyServerSocket = function(callback) {
 
 
 WebP2PConnection.prototype._sendCommand = function(msg, cb) {
-  msg.id = this._cbid++;
+  msg.cbid = this._cbid++;
   msg.peer = this.sid;
-  this._cbr[msg.id] = cb;
+  this._cbr[msg.cbid] = cb;
   window.postMessage({to: "extension", msg: msg}, window.location.origin);
 };
 
 WebP2PConnection.prototype._receiveCommand = function(event) {
   if (event.data && event.data.to && event.data.to == "page" &&
       event.data.msg.request.peer === this.sid) {
-    if (this._cbr[event.data.msg.request.id] && typeof this._cbr[event.data.msg.request.id] == 'function') {
-      this._cbr[event.data.msg.request.id](event.data.msg);
-      delete this._cbr[event.data.msg.request.id];
+    if (this._cbr[event.data.msg.request.cbid] && typeof this._cbr[event.data.msg.request.cbid] == 'function') {
+      this._cbr[event.data.msg.request.cbid](event.data.msg);
+      delete this._cbr[event.data.msg.request.cbid];
     } // messages do duplicate, it appears?
   }
 };
