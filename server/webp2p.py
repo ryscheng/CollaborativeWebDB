@@ -30,6 +30,7 @@ if 'PORT' in os.environ:
   default_port = os.environ['PORT']
 define("port", default=default_port, help="port", type=int)
 define("data", default="data.sqlite3", help="database", type=str)
+define("witheval", default=0, help="enable evaluation", type=bool)
 define("querySetSize", default=2, help="querySetSize", type=int)
 
 
@@ -40,9 +41,11 @@ class Application(tornado.web.Application):
             (r"/data.html", SubHandler),
             (r"/message", MessageHandler),
             (r"/data", DataHandler),
-            (r"/evaluation", EvaluationHandler),
-            (r"/evalWS", EvalWSHandler)
         ]
+        if options.witheval:
+          handlers.append((r"/evaluation", EvaluationHandler))
+          handlers.append((r"/evalWS", EvalWSHandler))
+
         settings = dict(
             cookie_secret=base64.b64encode(uuid.uuid4().bytes + uuid.uuid4().bytes),
             template_path=os.path.join(os.path.dirname(__file__), ".."),
@@ -314,7 +317,8 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
 
 def main():
     tornado.options.parse_command_line()
-    EvalWSHandler.init()
+    if options.witheval:
+      EvalWSHandler.init()
     app = Application()
     app.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()
