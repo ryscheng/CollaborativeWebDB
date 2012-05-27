@@ -1,17 +1,14 @@
-var WEBP2PVERSION = 1;
 var DEFAULT_PORT = 9229;
-var WEBP2PMAXCALLBACKS = 10;
 var WebP2PCallbacks = {};
 var WebP2PCallbackIndex = 0;
-WebP2PInit();
+console.log("WebP2P Init()");
+window.addEventListener("message", webp2pReceiveMessage, false);
 
-function WebP2PInit() {
-  console.log("WebP2P Init()");
-  window.addEventListener("message", webp2pReceiveMessage, false);
-}
-
-function getWebP2PVersion() {
-  return WEBP2PVERSION;
+function webp2pReceiveMessage(event){
+  if ((typeof event.data.to !== 'undefined') && (event.data.to == "page")) {
+    WebP2PCallbacks[event.data.msg.request.id](event.data.msg);
+    delete WebP2PCallbacks[event.data.msg.request.id];
+  }
 }
 
 function sendCommand(msg, callback){
@@ -21,14 +18,7 @@ function sendCommand(msg, callback){
   WebP2PCallbackIndex++;
 }
 
-function webp2pReceiveMessage(event){
-  if ((typeof event.data.to !== 'undefined') && (event.data.to == "page")) {
-    WebP2PCallbacks[event.data.msg.request.id](event.data.msg);
-    delete WebP2PCallbacks[event.data.msg.request.id];
-  }
-}
-
-function PeerConnection() {
+function WebP2PWrapper() {
   this.createSocket = function(callback) {
     sendCommand({command: COMMANDS.createsocket}, callback);
   }

@@ -176,11 +176,11 @@ void NaclTransportInstance::WriteCallback(int32_t result, int32_t id, int32_t* p
   fprintf(stdout, "writebuffer:%s\n",ios_[id]->c_str());
 #endif
   snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\"}", reqs_[id]->c_str(), result, ppErrorToString(result));
-  log_->log(retStr);
   delete ios_[id];
   ios_.erase(id);
   delete reqs_[id];
   reqs_.erase(id);
+  log_->log(retStr);
 }
 
 void NaclTransportInstance::ReadCallback(int32_t result, int32_t id, int32_t numBytes, int32_t* pres){
@@ -190,11 +190,11 @@ void NaclTransportInstance::ReadCallback(int32_t result, int32_t id, int32_t num
   fprintf(stdout, "readbuffer:%s\n",ios_[id]->c_str());
 #endif
   snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"data\":\"%s\"}", reqs_[id]->c_str(), result, ppErrorToString(result), ios_[id]->c_str());
-  log_->log(retStr);
   delete ios_[id];
   ios_.erase(id);
   delete reqs_[id];
   reqs_.erase(id);
+  log_->log(retStr);
 }
 
 void NaclTransportInstance::NewServerSocketCallback(int32_t result, int32_t id, int32_t* pres){
@@ -204,9 +204,9 @@ void NaclTransportInstance::NewServerSocketCallback(int32_t result, int32_t id, 
 #endif
   server_sockets_[id] = new pp::TCPServerSocketPrivate(this);
   snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"ssocketId\":%d}", reqs_[id]->c_str(), result, ppErrorToString(result), id);
-  log_->log(retStr);
   delete reqs_[id];
   reqs_.erase(id);
+  log_->log(retStr);
 }
 
 void NaclTransportInstance::NewSocketCallback(int32_t result, int32_t id, bool from_res, int32_t* pres){
@@ -220,11 +220,10 @@ void NaclTransportInstance::NewSocketCallback(int32_t result, int32_t id, bool f
     sockets_[id] = new pp::TCPSocketPrivate(this);
   }
   snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"socketId\":%d}", reqs_[id]->c_str(), result, ppErrorToString(result), id);
-  log_->log(retStr);
   delete reqs_[id];
   reqs_.erase(id);
+  log_->log(retStr);
 }
-
 
 
 //---------------------------------------------------------------------------------
