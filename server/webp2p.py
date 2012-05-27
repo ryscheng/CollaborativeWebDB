@@ -157,9 +157,6 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
 
   evaluationRuns = []
 
-  if os.path.exists(options.data):
-    db = sqlite3.connect(options.data)
-
   def allow_draft76(self):
     # for iOS 5.0 Safari
     return True
@@ -314,6 +311,8 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
 
 def main():
     tornado.options.parse_command_line()
+    if os.path.exists(options.data):
+      EvalWSHandler.db = sqlite3.connect(options.data)
     app = Application()
     app.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()
