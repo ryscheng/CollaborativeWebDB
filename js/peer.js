@@ -6,7 +6,7 @@ var server = {
   providers: {},
 
   write: function(obj) {
-    if (!this.socket) {
+    if (!this.socket || this.socket.readyState != 1) {
       return false;
     }
     return this.socket.send(JSON.stringify({"payload": obj}));
@@ -57,7 +57,6 @@ var server = {
           //todo: allow on demand connection establishment.
           result(null);
         }
-        result(null);
       }
     });
   },
