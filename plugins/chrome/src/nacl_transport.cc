@@ -163,7 +163,7 @@ void NaclTransportInstance::Read(std::string* message, int32_t id) {
     this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
     return;
   }
-  std::string* data = new std::string(0x00, numBytes);
+  std::string* data = new std::string(0x00, numBytes + 1);
   ios_[id] = data;
 #ifdef DEBUG
   fprintf(stdout,"read allocated cstring of length %d\n",numBytes);
@@ -221,7 +221,9 @@ void NaclTransportInstance::ReadCallback(int32_t result, int32_t id, int32_t num
   fprintf(stdout, "readcallback:%d:%s\n", id, reqs_[id]->c_str());
   fprintf(stdout, "readbuffer:%s\n",ios_[id]->c_str());
 #endif
-  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"data\":\"%s\"}", reqs_[id]->c_str(), result, ppErrorToString(result), ios_[id]->c_str());
+  char* read_buf = const_cast<char*>(ios_[id]->c_str());
+  read_buf[numBytes] = '\0';
+  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"data\":\"%s\"}", reqs_[id]->c_str(), result, ppErrorToString(result), read_buf);
   delete ios_[id];
   ios_.erase(id);
   delete reqs_[id];
