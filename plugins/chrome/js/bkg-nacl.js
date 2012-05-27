@@ -126,10 +126,10 @@ function ContentScriptConnection(port) {
     // clean up.
     if (naclmodule != null) {
       for (var i = 0; i < this.sockets.length; i++) {
-        naclmodule.postMessage(JSON.stringify({command: COMMANDS.destroy, socketId: this.sockets[i]}));
+        naclmodule.postMessage(JSON.stringify({command: COMMANDS.destroy, socketId: this.sockets[i], id: Math.floor(Math.random()*MAX_INT)}));
       }
       for (var i = 0; i < this.listeners.length; i++) {
-        naclmodule.postMessage(JSON.stringify({command: COMMANDS.destroyserversocket, ssocketId: this.listeners[i]}));
+        naclmodule.postMessage(JSON.stringify({command: COMMANDS.destroyserversocket, ssocketId: this.listeners[i], id: Math.floor(Math.random()*MAX_INT)}));
       }
     }
     delete contentScripts[this.port.name];

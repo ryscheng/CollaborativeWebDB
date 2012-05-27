@@ -13,3 +13,4 @@ var COMMANDS = {
   destroyserversocket: 11
 }
 var GETIPURL = "http://checkip.dyndns.com/";
+var MAX_INT = 9007199254740992;
