@@ -1,5 +1,6 @@
 var naclmodule = null;  // Global application object.
 var contentScripts = new Object();
+var globalCounter = 0;
 init();
 
 function init() {
@@ -51,6 +52,7 @@ function ContentScriptConnection(port) {
   this.readwriteops = new Object();
 
   this.onMessageFromApp = function(msg) {
+    msg.id = globalCounter++;
     msg.portname = port.name;
     console.log("MSG:"+port.name+"::"+JSON.stringify(msg));
     //This is the only operation not forwarded to NaCl and just done in JS

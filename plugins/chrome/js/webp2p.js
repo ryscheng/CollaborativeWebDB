@@ -6,13 +6,13 @@ window.addEventListener("message", webp2pReceiveMessage, false);
 
 function webp2pReceiveMessage(event){
   if ((typeof event.data.to !== 'undefined') && (event.data.to == "page")) {
-    WebP2PCallbacks[event.data.msg.request.id](event.data.msg);
-    delete WebP2PCallbacks[event.data.msg.request.id];
+    WebP2PCallbacks[event.data.msg.request.cbid](event.data.msg);
+    delete WebP2PCallbacks[event.data.msg.request.cbid];
   }
 }
 
 function sendCommand(msg, callback){
-  msg.id = WebP2PCallbackIndex;
+  msg.cbid = WebP2PCallbackIndex;
   window.postMessage({to: "extension", msg: msg}, window.location.origin);
   WebP2PCallbacks[WebP2PCallbackIndex] = callback;
   WebP2PCallbackIndex++;
