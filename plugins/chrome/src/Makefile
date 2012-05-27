@@ -16,7 +16,7 @@
 #
 PROJECT:=nacl_transport
 LDFLAGS:=-lppapi_cpp -lppapi
-CXX_SOURCES:=logger.cc pJSON/pJSON.cc $(PROJECT).cc
+CXX_SOURCES:=pJSON/pJSON.cc logger.cc $(PROJECT).cc
 
 
 #
