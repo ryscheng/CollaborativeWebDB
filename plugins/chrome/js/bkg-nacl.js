@@ -105,20 +105,32 @@ function ContentScriptConnection(port) {
     }
     //Return errors and completed results
     if (msg.result < 0 ||
-          (msg.request.command != COMMANDS.read && msg.request.command != COMMANDS.write) ||
-          (msg.request.command == COMMANDS.read && msg.data.length >= msg.request.numBytes) ||
-          (msg.request.command == COMMANDS.write && msg.request.data.length <= msg.result)) {
-      this && this.port.postMessage(msg);
-    } else { //Request again
-      this.readwriteops[msg.request.id] = msg;
-      var newReq = JSON.parse(JSON.stringify(msg.request));
-      if (newReq.command == COMMANDS.read) {
-        newReq.numBytes = msg.request.numBytes-msg.data.length;
-      } else if (newReq.command == COMMANDS.write) {
-        newReq.data = newReq.data.substr(msg.result);
+          (msg.request.command != COMMANDS.read && msg.request.command != COMMANDS.write)) {
+      this && this.port && this.port.postMessage(msg);
+    } else if (msg.request.command == COMMANDS.read) {
+      var transportLength = JSON.stringify([msg.data]).length - 4;
+      if (transportLength >= msg.request.numBytes) {
+        this && this.port && this.port.postMessage(msg);        
+      } else {
+        //request again
+        this.readwriteops[msg.request.id] = msg;
+        msg.request.numBytes -= transportLength;
+        console.log("Read Continuation:" + JSON.stringify(msg.request));
+        naclmodule.postMessage(JSON.stringify(msg.request));
       }
-      console.log("Try again:"+JSON.stringify(newReq));
-      naclmodule.postMessage(JSON.stringify(newReq));
+    } else if (msg.request.command == COMMANDS.write) {
+      var transport = JSON.stringify([msg.request.data]);
+      var transportLength = transport.length - 4;
+      if (transportLength <= msg.result) {
+        this && this.port && this.port.postMessage(msg);        
+      } else {
+        //request again
+        this.readwriteops[msg.request.id] = msg;
+        var newReq = JSON.parse(JSON.stringify(msg.request));
+        msg.request.data = JSON.parse("[\"" + transport.substr(2 + msg.result))[0];
+        console.log("Write continuation:"+JSON.stringify(msg.request));
+        naclmodule.postMessage(JSON.stringify(msg.request));
+      }
     }
   };
   
