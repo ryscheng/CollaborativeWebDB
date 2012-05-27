@@ -216,7 +216,7 @@ void NaclTransportInstance::Callback(int32_t result, int32_t id, int32_t* pres){
 }
 
 void NaclTransportInstance::ReadCallback(int32_t result, int32_t id, int32_t numBytes, int32_t* pres){
-  char retStr[MAX_RESULT_SIZE];
+  char* retStr = (char*)malloc(reqs_[id]->size() + numBytes + 100);
 #ifdef DEBUG
   fprintf(stdout, "readcallback:%d:%s\n", id, reqs_[id]->c_str());
   fprintf(stdout, "readbuffer:%s\n",ios_[id]->c_str());
@@ -229,10 +229,11 @@ void NaclTransportInstance::ReadCallback(int32_t result, int32_t id, int32_t num
   delete reqs_[id];
   reqs_.erase(id);
   log_->log(retStr);
+  free(retStr);
 }
 
 void NaclTransportInstance::WriteCallback(int32_t result, int32_t id, int32_t* pres){
-  char retStr[MAX_RESULT_SIZE];
+  char* retStr = (char*)malloc(reqs_[id]->size() + 100);
 #ifdef DEBUG
   fprintf(stdout, "writecallback:%d:%s\n", id, reqs_[id]->c_str());
   fprintf(stdout, "writebuffer:%s\n",ios_[id]->c_str());
@@ -243,6 +244,7 @@ void NaclTransportInstance::WriteCallback(int32_t result, int32_t id, int32_t* p
   delete reqs_[id];
   reqs_.erase(id);
   log_->log(retStr);
+  free(retStr);
 }
 
 void NaclTransportInstance::NewServerSocketCallback(int32_t result, int32_t id, int32_t* pres){
