@@ -38,8 +38,10 @@ function moduleDidLoad() {
 //Forward messages from NaCl to correct application port
 function handleMessage(message_event) {
   console.log("from nacl: "+message_event.data);
-  var result = JSON.parse(message_event.data);
-  contentScripts[result.request.portname].onMessageFromNacl(result);
+  if (message_event.data.substr(0,5) != "Error") {
+    var result = JSON.parse(message_event.data);
+    contentScripts[result.request.portname].onMessageFromNacl(result);
+  }
 }
 
 function ContentScriptConnection(port) {

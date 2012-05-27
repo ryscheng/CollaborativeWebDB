@@ -1,8 +1,8 @@
 #ifndef NACL_TRANSPORT_H
 #define NACL_TRANSPORT_H
 
-#include <vector>
 #include <map>
+#include <string>
 
 #include "ppapi/cpp/instance.h"
 #include "ppapi/cpp/module.h"
@@ -49,11 +49,15 @@ class NaclTransportInstance : public pp::Instance {
     }
 
     virtual void HandleMessage(const pp::Var& var_message);
+    void Connect(std::string* message, int32_t id);
+    void Read(std::string* message, int32_t id);
+    void Write(std::string* message, int32_t id);
+    void Listen(std::string* message, int32_t id);
     void Callback(int32_t result, int32_t id, int32_t* pres);
     void NewServerSocketCallback(int32_t result, int32_t id, int32_t* pres);
     void NewSocketCallback(int32_t result, int32_t id, bool from_res, int32_t* pres);
-    void WriteCallback(int32_t result, int32_t id, int32_t* pres);
     void ReadCallback(int32_t result, int32_t id, int32_t numBytes, int32_t* pres);
+    void WriteCallback(int32_t result, int32_t id, int32_t* pres);
   private:
     Logger* log_;
     pp::CompletionCallbackFactory<NaclTransportInstance, ThreadSafeRefCount> factory_;
@@ -64,7 +68,7 @@ class NaclTransportInstance : public pp::Instance {
     std::map<int32_t, pp::TCPSocketPrivate*> sockets_;
 
     std::string JsonGetString(std::string* json, std::string key);
-    double JsonGetNumber(std::string* json, std::string key);
+    int32_t JsonGetNumber(std::string* json, std::string key);
 
 };
 
