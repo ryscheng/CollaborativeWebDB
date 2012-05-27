@@ -88,6 +88,7 @@ var evaluation = {
       return; // cut off the execution
     }
     var query = this.nextQuery();
+    console.debug("next query is ", query);
     if (query == null) {
       this.stopEvaluation();
       return;

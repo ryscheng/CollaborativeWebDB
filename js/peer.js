@@ -45,7 +45,8 @@ var server = {
     server.peers_for_hash(req, function(peers) {
       if (!peers.length) {
         result(null);
-      } else {
+      } 
+      else {
         var p = node.get_connected(peers);
         if (p) {
           if (window.evaluation) {
