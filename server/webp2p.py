@@ -10,6 +10,7 @@ tornado_folder = os.path.join(this_folder, "tornado")
 if tornado_folder not in sys.path:
   sys.path.insert(0, tornado_folder)
 
+import querygen.engine
 import base64
 import logging
 import sqlite3
@@ -29,6 +30,7 @@ if 'PORT' in os.environ:
   default_port = os.environ['PORT']
 define("port", default=default_port, help="port", type=int)
 define("data", default="data.sqlite3", help="database", type=str)
+define("querySetSize", default=2, help="querySetSize", type=int)
 
 
 class Application(tornado.web.Application):
@@ -155,6 +157,9 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
 
   evaluationRuns = []
 
+  if os.path.exists(options.data):
+    db = sqlite3.connect(options.data)
+
   def allow_draft76(self):
     # for iOS 5.0 Safari
     return True
@@ -172,6 +177,12 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
     # do something with the message
 
     parsed = tornado.escape.json_decode(message)
+
+    if "command" in parsed and parsed["command"] == "getQueries":
+        queries = []
+        #generate queries
+        
+        self.write(tornado.escape.json_encode(queries))
     if self.id in EvalWSHandler.evaluatorStats:
       EvalWSHandler.evaluatorStats[self.id].append(parsed)
     else:
@@ -191,11 +202,24 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
     if EvalWSHandler.started:
       # starting while started has no effect
       return False
+
+    #generate and distribute queries to evaluators
+    for e in EvalWSHandler.evaluators:
+      #queries = ["select count(*) from part;"]
+      #generate queries
+      queries = EvalWSHandler.generateQueries()
+      jsonQueries = tornado.escape.json_encode(queries)
+      EvalWSHandler.evaluators[e].write_message({"command": "queries", "queries": jsonQueries})
+
+    #evaluation has begun
     EvalWSHandler.started = True
     DataHandler.stats = EvaluationHandler.newEvalStats()
     EvalWSHandler.evaluationRuns.append(DataHandler.stats)
+
+    #tell evaluators to start
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "start"})
+
     return True
     
   @classmethod
@@ -206,6 +230,16 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
       DataHandler.stats = None
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "stop"})
+
+  @classmethod
+  def generateQueries(self):
+    count = options.querySetSize
+    engine = querygen.engine.Engine(EvalWSHandler.db)
+    queries = []
+    for i in range(count):
+      queries.append(engine.getQuery())
+    return queries
+
 
 class MessageHandler(tornado.websocket.WebSocketHandler):
     waiters = dict()

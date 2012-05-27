@@ -28,6 +28,8 @@ var database = {
         query_p1 = database._pageQuery(query, 1);
         query_pn = database._pageQuery(query, page);
       }
+      Host.log("query after paging is "+query_p1);
+      Host.log("or maybe "+query_pn);
       database._reset();
       database._training = true;
       try {
@@ -48,7 +50,7 @@ var database = {
     }
   },
   _pageQuery: function(query, page) {
-      var qLimit = query.match(/LIMIT (\d+),?\s+?(\d+)?;/i);
+      var qLimit = query.match(/LIMIT\s*(\d+),?\s*(\d+)?/i);
       
       // find offset into results from which we will return
       var offset = 0;
