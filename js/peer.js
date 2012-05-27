@@ -157,7 +157,7 @@ var node = {
         if (node.edges[msg].state == WebP2PConnectionState.CONNECTED && msg < node.id) {
           connection.close();
         } else {
-          if (node.eges[msg].state != WebP2PConnectionState.CONNECTED) {
+          if (node.edges[msg].state != WebP2PConnectionState.CONNECTED) {
             network_pane.channel_node(msg);
           }
           node.edges[msg].close();

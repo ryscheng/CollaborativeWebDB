@@ -167,7 +167,7 @@ WebP2PConnection.prototype.send = function(msg) {
   if (this.state != WebP2PConnectionState.CONNECTED) {
     return false;
   }
-  var length = msg.length;
+  var length = JSON.stringify([msg]).length - 4;
   var llength = (length + "").length;
   if (llength > 9) {
     console.log("Message too long!");
