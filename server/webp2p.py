@@ -172,6 +172,11 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
     # do something with the message
 
     parsed = tornado.escape.json_decode(message)
+
+    if "command" in parsed and parsed["command"] == "getQueries":
+        queries = []
+        #generate queries
+        self.write(tornado.escape.json_encode(queries))
     if self.id in EvalWSHandler.evaluatorStats:
       EvalWSHandler.evaluatorStats[self.id].append(parsed)
     else:
@@ -191,11 +196,23 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
     if EvalWSHandler.started:
       # starting while started has no effect
       return False
+
+    #generate and distribute queries to evaluators
+    for e in EvalWSHandler.evaluators:
+      queries = ["select count(*) from part;"]
+      #generate queries
+      jsonQueries = tornado.escape.json_encode(queries)
+      EvalWSHandler.evaluators[e].write_message({"command": "queries", "queries": jsonQueries})
+
+    #evaluation has begun
     EvalWSHandler.started = True
     DataHandler.stats = EvaluationHandler.newEvalStats()
     EvalWSHandler.evaluationRuns.append(DataHandler.stats)
+
+    #tell evaluators to start
     for e in EvalWSHandler.evaluators:
       EvalWSHandler.evaluators[e].write_message({"command": "start"})
+
     return True
     
   @classmethod
