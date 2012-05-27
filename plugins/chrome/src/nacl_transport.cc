@@ -80,9 +80,8 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
       this->Write(message, id);
       break;
     case WEBP2P_DISCONNECT:
-      if((socketId=this->JsonGetNumber(message, "socketId")) == -1) {
-        this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-      } else if (sockets_.count(socketId) <= 0) {
+      if(((socketId=this->JsonGetNumber(message, "socketId")) == -1) || 
+          (sockets_.count(socketId) <= 0)) {
         this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
       } else {
         sockets_[socketId]->Disconnect();
@@ -105,9 +104,8 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
       this->Listen(message, id);
       break;
     case WEBP2P_ACCEPT:
-      if ((ssocketId=this->JsonGetNumber(message, "ssocketId")) == -1) {
-        this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-      } else if (server_sockets_.count(ssocketId) <= 0) {
+      if (((ssocketId=this->JsonGetNumber(message, "ssocketId")) == -1) ||
+          (server_sockets_.count(ssocketId) <= 0)) {
         this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
       } else {
         socket_res_[id] = new PP_Resource();
@@ -115,9 +113,8 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
       }
       break;
     case WEBP2P_STOPLISTENING:
-      if ((ssocketId=this->JsonGetNumber(message, "ssocketId")) == -1) {
-        this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-      } else if (server_sockets_.count(ssocketId) <= 0) {
+      if (((ssocketId=this->JsonGetNumber(message, "ssocketId")) == -1) ||
+          (server_sockets_.count(ssocketId) <= 0)) {
         this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
       } else {
         server_sockets_[ssocketId]->StopListening();
@@ -125,9 +122,8 @@ void NaclTransportInstance::HandleMessage(const pp::Var& var_message) {
       }
       break;
     case WEBP2P_DESTROYSERVERSOCKET:
-      if ((ssocketId=this->JsonGetNumber(message, "ssocketId")) == -1) {
-        this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-      } else if (server_sockets_.count(ssocketId) <= 0) {
+      if (((ssocketId=this->JsonGetNumber(message, "ssocketId")) == -1) ||
+          (server_sockets_.count(ssocketId) <= 0)) {
         this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
       } else {
         server_sockets_[ssocketId]->StopListening();
@@ -146,19 +142,10 @@ void NaclTransportInstance::Connect(std::string* message, int32_t id) {
   int32_t ret, socketId;
   std::string host;
   uint16_t port;
-  if((socketId=this->JsonGetNumber(message, "socketId")) == -1) {
-    this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-    return;
-  }
-  if (sockets_.count(socketId) <= 0) {
-    this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-    return;
-  } 
-  if ((host=this->JsonGetString(message, "host")).empty()){
-    this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-    return;
-  }
-  if ((port = this->JsonGetNumber(message, "port")) == -1){
+  if(((socketId=this->JsonGetNumber(message, "socketId")) == -1) || 
+      (sockets_.count(socketId) <= 0) ||
+      ((host=this->JsonGetString(message, "host")).empty()) ||
+      ((port = this->JsonGetNumber(message, "port")) == -1)) {
     this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
     return;
   }
@@ -170,15 +157,9 @@ void NaclTransportInstance::Connect(std::string* message, int32_t id) {
 
 void NaclTransportInstance::Read(std::string* message, int32_t id) {
   int32_t ret, socketId, numBytes;
-  if((socketId=this->JsonGetNumber(message, "socketId")) == -1) {
-    this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-    return;
-  }
-  if (sockets_.count(socketId) <= 0) {
-    this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-    return;
-  } 
-  if ((numBytes=this->JsonGetNumber(message, "numBytes")) == -1){
+  if(((socketId=this->JsonGetNumber(message, "socketId")) == -1) ||
+      (sockets_.count(socketId) <= 0) ||
+      ((numBytes=this->JsonGetNumber(message, "numBytes")) == -1)) {
     this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
     return;
   }
@@ -193,15 +174,9 @@ void NaclTransportInstance::Read(std::string* message, int32_t id) {
 void NaclTransportInstance::Write(std::string* message, int32_t id) {
   int32_t ret, socketId;
   std::string datamsg;
-  if((socketId=this->JsonGetNumber(message, "socketId")) == -1) {
-    this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-    return;
-  }
-  if (sockets_.count(socketId) <= 0) {
-    this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-    return;
-  } 
-  if ((datamsg=this->JsonGetString(message, "data")).empty()){
+  if(((socketId=this->JsonGetNumber(message, "socketId")) == -1) ||
+      (sockets_.count(socketId) <= 0) ||
+      ((datamsg=this->JsonGetString(message, "data")).empty())) {
     this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
     return;
   }
@@ -219,15 +194,9 @@ void NaclTransportInstance::Listen(std::string* message, int32_t id) {
   const uint8_t localhost[4] = {0, 0, 0, 0};
   int32_t backlog = 5;
   struct PP_NetAddress_Private address;
-  if((ssocketId=this->JsonGetNumber(message, "ssocketId")) == -1) {
-    this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-    return;
-  }
-  if (server_sockets_.count(ssocketId) <= 0) {
-    this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
-    return;
-  } 
-  if ((port=this->JsonGetNumber(message, "port")) == -1){
+  if(((ssocketId=this->JsonGetNumber(message, "ssocketId")) == -1) ||
+      (server_sockets_.count(ssocketId) <= 0) ||
+      ((port=this->JsonGetNumber(message, "port")) == -1)) {
     this->Callback(PP_ERROR_BADARGUMENT, id, &ret);
     return;
   }
