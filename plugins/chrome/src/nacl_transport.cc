@@ -216,14 +216,15 @@ void NaclTransportInstance::Callback(int32_t result, int32_t id, int32_t* pres){
 }
 
 void NaclTransportInstance::ReadCallback(int32_t result, int32_t id, int32_t numBytes, int32_t* pres){
-  char* retStr = (char*)malloc(reqs_[id]->size() + numBytes + 100);
+  size_t bufsize = reqs_[id]->size() + numBytes + 100;
+  char* retStr = (char*)malloc(bufsize);
 #ifdef DEBUG
   fprintf(stdout, "readcallback:%d:%s\n", id, reqs_[id]->c_str());
   fprintf(stdout, "readbuffer:%s\n",ios_[id]->c_str());
 #endif
   char* read_buf = const_cast<char*>(ios_[id]->c_str());
   read_buf[numBytes] = '\0';
-  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"data\":\"%s\"}", reqs_[id]->c_str(), result, ppErrorToString(result), read_buf);
+  snprintf(retStr, bufsize, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\",\"data\":\"%s\"}", reqs_[id]->c_str(), result, ppErrorToString(result), read_buf);
   delete ios_[id];
   ios_.erase(id);
   delete reqs_[id];
@@ -233,12 +234,13 @@ void NaclTransportInstance::ReadCallback(int32_t result, int32_t id, int32_t num
 }
 
 void NaclTransportInstance::WriteCallback(int32_t result, int32_t id, int32_t* pres){
-  char* retStr = (char*)malloc(reqs_[id]->size() + 100);
+  size_t bufsize = reqs_[id]->size() + 100;
+  char* retStr = (char*)malloc(bufsize);
 #ifdef DEBUG
   fprintf(stdout, "writecallback:%d:%s\n", id, reqs_[id]->c_str());
   fprintf(stdout, "writebuffer:%s\n",ios_[id]->c_str());
 #endif
-  snprintf(retStr, MAX_RESULT_SIZE, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\"}", reqs_[id]->c_str(), result, ppErrorToString(result));
+  snprintf(retStr, bufsize, "{\"request\":%s,\"result\":%d,\"resultStr\":\"%s\"}", reqs_[id]->c_str(), result, ppErrorToString(result));
   delete ios_[id];
   ios_.erase(id);
   delete reqs_[id];
