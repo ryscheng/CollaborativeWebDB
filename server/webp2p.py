@@ -159,6 +159,7 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
 
   if os.path.exists(options.data):
     db = sqlite3.connect(options.data)
+  engine = querygen.engine.Engine(db)
 
   def allow_draft76(self):
     # for iOS 5.0 Safari
@@ -234,10 +235,9 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
   @classmethod
   def generateQueries(self):
     count = options.querySetSize
-    engine = querygen.engine.Engine(EvalWSHandler.db)
     queries = []
     for i in range(count):
-      queries.append(engine.getQuery())
+      queries.append(EvalWSHandler.engine.getQuery())
     return queries
 
 
