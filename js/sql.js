@@ -360,7 +360,11 @@ var database = {
           var page_offset = idx - remainder;
           var page = database._get(database.get_table_page_key(table.name, page_offset));
           var row = page['rows'][remainder];
-          return callback(table.types, row, 1);
+          if (!row) {
+            return callback(table.types, 0, 1);
+          } else {
+            return callback(table.types, row, 1);
+          }
         }
     };
 
