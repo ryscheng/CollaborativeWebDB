@@ -105,7 +105,7 @@ class DataHandler(tornado.web.RequestHandler):
 
     def initialize(self):
         #if os.access(options.data, os.W_OK):
-            #logging.error("Database is mutable, chmod -w to fix.")
+            logging.error("Database is mutable, chmod -w to fix.")
         if os.path.exists(options.data):
             self.db = sqlite3.connect(options.data)
         else:
@@ -119,7 +119,7 @@ class DataHandler(tornado.web.RequestHandler):
           stats["count"] += 1
           startTime = time.time()
           timeBin = math.floor(startTime)
-          #logging.info("timebin is %d" %(timeBin))
+          logging.info("timebin is %d" %(timeBin))
           if (timeBin in stats["counts"]):
             stats["counts"][timeBin] += 1
           else:
@@ -127,7 +127,7 @@ class DataHandler(tornado.web.RequestHandler):
 
         # actual data handling
         q = urllib.unquote(self.get_argument('q'))
-        #logging.info(q)
+        logging.info(q)
         retval = {}
         if self.db:
             c = self.db.cursor()
@@ -153,7 +153,7 @@ class DataHandler(tornado.web.RequestHandler):
           else:
             stats["times"][timeBin] = elapsed
 
-#          logging.info("done with a get, count: %d, time: %f, bincount: %d, bintime: %f" % (stats["count"], stats["time"], stats["counts"][timeBin], stats["times"][timeBin]))
+          logging.info("done with a get, count: %d, time: %f, bincount: %d, bintime: %f" % (stats["count"], stats["time"], stats["counts"][timeBin], stats["times"][timeBin]))
                 
 class EvalWSHandler(tornado.websocket.WebSocketHandler):
   evaluators = dict();
@@ -175,7 +175,7 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
       del EvalWSHandler.evaluators[self.id]
 
   def on_message(self, message):
-    #logging.info("evalWS handler got message %r", message)
+    logging.info("evalWS handler got message %r", message)
     # do something with the message
 
     parsed = tornado.escape.json_decode(message)
@@ -187,10 +187,10 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
       EvalWSHandler.evaluatorStats[self.id] = [parsed];
 
     
-    #if "count" in parsed:
-    #  logging.info("count: %d" % (parsed["count"]))
-    #if "time" in parsed:
-    #  logging.info("time: %f" % (parsed["time"]))
+    if "count" in parsed:
+      logging.info("count: %d" % (parsed["count"]))
+    if "time" in parsed:
+      logging.info("time: %f" % (parsed["time"]))
 
 
   @classmethod
@@ -267,7 +267,7 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
 
     @classmethod
     def send_updates(cls, chat):
-        #logging.info("sending message to %d waiters", len(cls.waiters))
+        logging.info("sending message to %d waiters", len(cls.waiters))
         for waiter in cls.waiters.values():
             try:
                 waiter.write_message(chat)
@@ -276,7 +276,7 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
         #        logging.error("Error sending message", exc_info=True)
 
     def on_message(self, message):
-        #logging.info("got message %r", message)
+        logging.info("got message %r", message)
         parsed = tornado.escape.json_decode(message)
         if "payload" in parsed:
           if "event" in parsed["payload"] and parsed["payload"]["event"]=="register":
