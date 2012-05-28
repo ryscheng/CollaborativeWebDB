@@ -35,6 +35,7 @@ define("querySetSize", default=50000, help="querySetSize", type=int)
 define("skew", default=1, help="skew", type=int)
 #define("logging", default="none", help="logging", type=str)
 
+logging.setLevel(logging.ERROR)
 
 class Application(tornado.web.Application):
     def __init__(self):
@@ -104,7 +105,7 @@ class DataHandler(tornado.web.RequestHandler):
     stats = None
 
     def initialize(self):
-        #if os.access(options.data, os.W_OK):
+        if os.access(options.data, os.W_OK):
             logging.error("Database is mutable, chmod -w to fix.")
         if os.path.exists(options.data):
             self.db = sqlite3.connect(options.data)
