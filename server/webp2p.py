@@ -33,9 +33,6 @@ define("data", default="data.sqlite3", help="database", type=str)
 define("witheval", default=0, help="enable evaluation", type=bool)
 define("querySetSize", default=50000, help="querySetSize", type=int)
 define("skew", default=1, help="skew", type=int)
-#define("logging", default="none", help="logging", type=str)
-
-logging.setLevel(logging.ERROR)
 
 class Application(tornado.web.Application):
     def __init__(self):
