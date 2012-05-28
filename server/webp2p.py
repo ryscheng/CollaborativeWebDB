@@ -31,7 +31,9 @@ if 'PORT' in os.environ:
 define("port", default=default_port, help="port", type=int)
 define("data", default="data.sqlite3", help="database", type=str)
 define("witheval", default=0, help="enable evaluation", type=bool)
-define("querySetSize", default=2, help="querySetSize", type=int)
+define("querySetSize", default=50000, help="querySetSize", type=int)
+define("skew", default=1, help="skew", type=int)
+#define("logging", default="none", help="logging", type=str)
 
 
 class Application(tornado.web.Application):
@@ -62,11 +64,11 @@ class EvaluationHandler(tornado.web.RequestHandler):
         self.render("index.html", evaluation=True)
       else:
         if cmd == "start":
-          logging.info("starting evaluation") 
+          print("starting evaluation") 
           rc = EvalWSHandler.start_evaluation()
           self.write(tornado.escape.json_encode(rc))
         elif cmd == "stop":
-          logging.info("stopping evaluation")
+          print("stopping evaluation")
           EvalWSHandler.stop_evaluation()
         elif cmd == "stats":
           logging.info("sending stats")
@@ -102,8 +104,8 @@ class DataHandler(tornado.web.RequestHandler):
     stats = None
 
     def initialize(self):
-        if os.access(options.data, os.W_OK):
-            logging.error("Database is mutable, chmod -w to fix.")
+        #if os.access(options.data, os.W_OK):
+            #logging.error("Database is mutable, chmod -w to fix.")
         if os.path.exists(options.data):
             self.db = sqlite3.connect(options.data)
         else:
@@ -117,7 +119,7 @@ class DataHandler(tornado.web.RequestHandler):
           stats["count"] += 1
           startTime = time.time()
           timeBin = math.floor(startTime)
-          logging.info("timebin is %d" %(timeBin))
+          #logging.info("timebin is %d" %(timeBin))
           if (timeBin in stats["counts"]):
             stats["counts"][timeBin] += 1
           else:
@@ -125,7 +127,7 @@ class DataHandler(tornado.web.RequestHandler):
 
         # actual data handling
         q = urllib.unquote(self.get_argument('q'))
-        logging.info(q)
+        #logging.info(q)
         retval = {}
         if self.db:
             c = self.db.cursor()
@@ -151,7 +153,7 @@ class DataHandler(tornado.web.RequestHandler):
           else:
             stats["times"][timeBin] = elapsed
 
-          logging.info("done with a get, count: %d, time: %f, bincount: %d, bintime: %f" % (stats["count"], stats["time"], stats["counts"][timeBin], stats["times"][timeBin]))
+#          logging.info("done with a get, count: %d, time: %f, bincount: %d, bintime: %f" % (stats["count"], stats["time"], stats["counts"][timeBin], stats["times"][timeBin]))
                 
 class EvalWSHandler(tornado.websocket.WebSocketHandler):
   evaluators = dict();
@@ -173,16 +175,12 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
       del EvalWSHandler.evaluators[self.id]
 
   def on_message(self, message):
-    logging.info("evalWS handler got message %r", message)
+    #logging.info("evalWS handler got message %r", message)
     # do something with the message
 
     parsed = tornado.escape.json_decode(message)
 
-    if "command" in parsed and parsed["command"] == "getQueries":
-        queries = []
-        #generate queries
-        
-        self.write(tornado.escape.json_encode(queries))
+    print("got stats from "+self.id)
     if self.id in EvalWSHandler.evaluatorStats:
       EvalWSHandler.evaluatorStats[self.id].append(parsed)
     else:
@@ -199,7 +197,9 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
   def init(self):
     if os.path.exists(options.data):
       EvalWSHandler.db = sqlite3.connect(options.data)
-      EvalWSHandler.engine = querygen.engine.Engine(EvalWSHandler.db)
+      print('skew is '+str(options.skew))
+      EvalWSHandler.engine = querygen.engine.Engine(EvalWSHandler.db, options.skew)
+      print('querygen engine is ready')
 
   @classmethod
   def start_evaluation(self):
@@ -267,15 +267,16 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
 
     @classmethod
     def send_updates(cls, chat):
-        logging.info("sending message to %d waiters", len(cls.waiters))
+        #logging.info("sending message to %d waiters", len(cls.waiters))
         for waiter in cls.waiters.values():
             try:
                 waiter.write_message(chat)
             except:
-                logging.error("Error sending message", exc_info=True)
+                pass
+        #        logging.error("Error sending message", exc_info=True)
 
     def on_message(self, message):
-        logging.info("got message %r", message)
+        #logging.info("got message %r", message)
         parsed = tornado.escape.json_decode(message)
         if "payload" in parsed:
           if "event" in parsed["payload"] and parsed["payload"]["event"]=="register":
