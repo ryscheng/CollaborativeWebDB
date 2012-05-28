@@ -22,18 +22,21 @@ var database = {
 
     if (query.match(/^SELECT/i)) {
       // paging
-      var query_p1 = query;
-      var query_pn = query;
-      if (page && !isNaN(page)) {
-        query_p1 = database._pageQuery(query, 1);
-        query_pn = database._pageQuery(query, page);
+      if (query.indexOf(";") == -1) {
+        query = query + ";";
       }
-      Host.log("query after paging is "+query_p1);
-      Host.log("or maybe "+query_pn);
+      var query_base_offset = database._getPageOffset(query);
+      var query_page_offset = query_base_offset;
+      if (page && !isNaN(page)) {
+        query_page_offset += page * database.page_width;
+      }
+      var query_base = database._rebaseQuery(query, 0);
+      var query_real = database._rebaseQuery(query, query_page_offset);
+      Host.log("cost query is " + query_base);
       database._reset();
       database._training = true;
       try {
-        return database.handle.exec(query_p1, database._cost.bind(this, query_pn, callback, only_train, page));
+        return database.handle.exec(query_base, database._cost.bind(this, query_real, callback, only_train, query_page_offset));
       } catch(e) {
         database._reset();
         callback(null, e.stack);
@@ -49,7 +52,7 @@ var database = {
       }
     }
   },
-  _pageQuery: function(query, page) {
+  _getPageOffset: function(query) {
       var qLimit = query.match(/LIMIT\s*(\d+),?\s*(\d+)?/i);
       
       // find offset into results from which we will return
@@ -57,8 +60,10 @@ var database = {
       if (qLimit && qLimit[2]) {
         offset = parseInt(qLimit[1]);
       }
-      var pageOffset = database.page_width * (page - 1);
-      offset += pageOffset;
+      return offset;  
+  },
+  _rebaseQuery: function(query, offset) {
+      var qLimit = query.match(/LIMIT\s*(\d+),?\s*(\d+)?/i);
 
       var limit = ' LIMIT ' + offset + ', ' + database.page_width + ';';
       
@@ -66,11 +71,11 @@ var database = {
         query = query.replace(/;/, limit);
       }
       else {
-        query = query.replace(/ LIMIT[\W]*;/i, limit);
+        query = query.replace(/ LIMIT[^a-zA-Z]*;/i, limit);
       }
       return query;
   },
-  _cost: function(query, callback, only_train, page, answer) {
+  _cost: function(query, callback, only_train, query_offset, answer) {
     if (only_train) {
         database._reset();
         return callback(answer);
@@ -108,8 +113,14 @@ var database = {
         }
 
         if (indicies > 0) {
+          var remainder = query_offset % database.page_width;
+          var first_offset = query_offset - remainder;
           n++;
-          database.load_page(database.get_table_page_key(i, database.page_width * (page - 1)), continuation);
+          database.load_page(database.get_table_page_key(i, first_offset), continuation);
+          if (remainder) {
+            n++;
+            database.load_page(database.get_table_page_key(i, first_offset + database.page_width), continuation);
+          }
         }
       }
       continuation();
@@ -176,6 +187,14 @@ var database = {
   
   _set: function(key, page) {
     database.data[key.hash] = page;
+    
+    if (key.hash.indexOf(".") > 0) {
+      var to = key.hash.split(".");
+      var table = database.source[to[0]];
+      if (table && page && table.topPage < to[1] && page['rows'].length) {
+        table.topPage = to[1];
+      }
+    }
 
     // generate a callback to access the data
     pageAccessFn = this._get.bind(this, key);
@@ -277,7 +296,8 @@ var database = {
         colnames: [],
         types: [],
         def: create,
-        dirty: {}
+        dirty: {},
+        topPage: 0
       };
       // When this breaks, http://regexpal.com is useful for seeing what isn't matching.
       var create_regexp = /^\s*create\s+(temp|temporary)?\s*table\s+(\w*\.)?(\w*)\s+\(((\s*(\w+)\s+(\S+)(\s+(PRIMARY|NOT|UNIQUE|CHECK|DEFAULT|COLLATE|REFERENCES)[^,\)]*)?)(,\s*(\w+)\s+(\S+)(\s+(PRIMARY|NOT|UNIQUE|CHECK|DEFAULT|COLLATE|REFERENCES)[^,\)]*)?)*?)(,\s+(PRIMARY|UNIQUE|CHECK|FOREIGN)([^,]|\(.*\))+)*\)\s*$/i;
@@ -359,8 +379,11 @@ var database = {
           var remainder = idx % database.page_width;
           var page_offset = idx - remainder;
           var page = database._get(database.get_table_page_key(table.name, page_offset));
-          var row = page['rows'][remainder];
-          if (!row) {
+          var row = page && page['rows'][remainder];
+          if (!row && table.topPage > page_offset) {
+            var topPage = database._get(database.get_table_page_key(table.name, table.topPage));
+            return callback(table.types, topPage['rows'][0], 1);
+          } else if (!row) {
             return callback(table.types, 0, 1);
           } else {
             return callback(table.types, row, 1);
