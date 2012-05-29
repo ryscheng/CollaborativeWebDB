@@ -23,7 +23,7 @@ var WebP2PCommands = {
 };
 
 var WebP2PConnectionSettings = {
-  DEFAULT_PORT: 9229,
+  DEFAULT_PORT: 10000 + Math.floor(Math.random()*30000),
   channel: null
 };
 
