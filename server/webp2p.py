@@ -211,6 +211,7 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
 
     #generate and distribute queries to evaluators
     for e in EvalWSHandler.evaluators:
+      print("starting eval with "+e)
       #queries = ["select count(*) from part;"]
       #generate queries
       queries = EvalWSHandler.generateQueries()
