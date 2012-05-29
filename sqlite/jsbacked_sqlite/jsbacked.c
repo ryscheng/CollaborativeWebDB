@@ -112,6 +112,26 @@ static int js_xDisconnect(sqlite3_vtab *pVTab) {
 
 // Define good table access patterns.
 static int js_xBestIndex(sqlite3_vtab *pVTab, sqlite3_index_info* info) {
+
+  // are there rowid constraints?
+  int nc = info->nConstraint;
+  struct sqlite3_index_constraint *constraints = info->aConstraint;
+  //int i;
+
+  if (nc == 1) {
+    struct sqlite3_index_constraint c = constraints[0];
+    int col = c.iColumn;
+    unsigned char op = c.op;
+    unsigned char usable = c.usable;
+  }
+
+  //char* msg = sqlite3_malloc(256);
+  /*
+  for (i=0; i<nc; i++) {
+    sqlite3_index_constraint c = constraints[i];
+  }
+  */
+
   js_vtab* tab = (js_vtab*) pVTab;
   pVTab->zErrMsg = 0;
   // Tasks:
