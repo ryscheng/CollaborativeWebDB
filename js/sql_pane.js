@@ -22,7 +22,7 @@ sql_pane.init = function() {
 
 sql_pane.prototype.beginSelect = function() {
   this.createResultUI();
-  console.debug(this.query, this.page);
+  //console.debug(this.query, this.page);
   database.exec(this.query, false, this.renderData.bind(this), 
                 this.renderCompletion.bind(this), this.page);
 };

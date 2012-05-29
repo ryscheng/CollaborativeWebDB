@@ -6,7 +6,7 @@ var evaluation = {
   oldPeerDataRecv: 0,
   oldServerDataRecv: 0,
   
-  binSize: 5, // bin size in seconds of timeseries 
+  binSize: 1, // bin size in seconds of timeseries 
   stats: {},
 
   queries: [],
@@ -121,9 +121,11 @@ var evaluation = {
       var elapsed = endTime - this.queryStartTime;
       this.stats.time += elapsed;
 
-//      var timeBin = Math.floor(this.queryStartTime);
- //     timeBin = timeBin - (timeBin % this.binSize);
-      
+      var timeBin = Math.floor(this.queryStartTime);
+      timeBin = timeBin - (timeBin % this.binSize);
+     
+      // times in bins 
+      //
       /*
       if (this.stats.times[timeBin]) {
         this.stats.times[timeBin] += elapsed;
@@ -132,26 +134,40 @@ var evaluation = {
         this.stats.times[timeBin] = elapsed;
       }
       */
-
-      // count total number of queries run
-      this.stats.count++;
-
-      // count number of times we had to fetch pages from the server
-      if (node.serverDataRecv !== this.oldServerDataRecv) {
-        this.stats.bitmap.push(true); 
-      }
-      else {
-        this.stats.bitmap.push(false);
-      }
-
-      /*
+      // counts in bins
       if (this.stats.counts[timeBin]) {
         this.stats.counts[timeBin]++;
       }
       else { 
         this.stats.counts[timeBin] = 1;
       }
-      */
+
+      // count total number of queries run
+      this.stats.count++;
+
+      // count number of times we had to fetch pages from the server
+      var hitServer = false;
+      var hitPeer = false;
+      if (server.serverDataRecv !== this.oldServerDataRecv) {
+        hitServer = true;
+      }
+      if (node.peerDataRecv !== this.oldPeerDataRecv) {
+        hitPeer = true;
+      }
+
+      if (hitServer) {
+        this.stats.bitmap.push(2);
+      }
+      else if (hitPeer) {
+        this.stats.bitmap.push(1); 
+      }
+      else {
+        this.stats.bitmap.push(0);
+      }
+
+      this.oldServerDataRecv = server.serverDataRecv;
+      this.oldPeerDataRecv = node.peerDataRecv;
+
 
       // be able to see that the evaluation is still running
       if (this.stats.count % 100 == 0) {

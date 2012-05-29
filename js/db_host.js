@@ -45,7 +45,7 @@ var database = {
       }
       var data = JSON.parse(event.data);
       if (data && data['m']) {
-        console.log('message from db:' + event.data);
+        //console.log('message from db:' + event.data);
         if (data['m'] == 'exec') {
           if (data['r']['ret'] !== undefined) {
             var id = data['r']['id'];
@@ -84,12 +84,12 @@ var database = {
         database._err(event.data);
       }
     } catch (e) {
-      console.log(e);
+      //console.log(e);
       database._err(e.stack);
     }
   },
   _err: function(e) {
-    console.log(e);
+    //console.log(e);
     log.warn("error received from database: " + e);
     database.error = e;
   }
