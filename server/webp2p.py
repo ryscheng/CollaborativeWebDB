@@ -32,10 +32,11 @@ define("port", default=default_port, help="port", type=int)
 define("data", default="data.sqlite3", help="database", type=str)
 define("witheval", default=0, help="enable evaluation", type=bool)
 define("querySetSize", default=50000, help="querySetSize", type=int)
-define("skew", default=1, help="skew", type=int)
+define("skew", default=1, help="skew", type=float)
 #define("logging", default="none", help="logging", type=str)
 
-logging.setLevel(logging.ERROR)
+rootLogger = logging.getLogger('')
+rootLogger.setLevel(logging.ERROR)
 
 class Application(tornado.web.Application):
     def __init__(self):
@@ -65,11 +66,11 @@ class EvaluationHandler(tornado.web.RequestHandler):
         self.render("index.html", evaluation=True)
       else:
         if cmd == "start":
-          print("starting evaluation") 
+          logging.info("starting evaluation") 
           rc = EvalWSHandler.start_evaluation()
           self.write(tornado.escape.json_encode(rc))
         elif cmd == "stop":
-          print("stopping evaluation")
+          logging.info("stopping evaluation")
           EvalWSHandler.stop_evaluation()
         elif cmd == "stats":
           logging.info("sending stats")
@@ -198,7 +199,7 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
   def init(self):
     if os.path.exists(options.data):
       EvalWSHandler.db = sqlite3.connect(options.data)
-      print('skew is '+str(options.skew))
+      logging.info('skew is '+str(options.skew))
       EvalWSHandler.engine = querygen.engine.Engine(EvalWSHandler.db, options.skew)
       print('querygen engine is ready')
 
@@ -273,8 +274,7 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
             try:
                 waiter.write_message(chat)
             except:
-                pass
-        #        logging.error("Error sending message", exc_info=True)
+                logging.error("Error sending message", exc_info=True)
 
     def on_message(self, message):
         logging.info("got message %r", message)
