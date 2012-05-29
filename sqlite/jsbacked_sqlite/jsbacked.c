@@ -128,7 +128,7 @@ static int js_xBestIndex(sqlite3_vtab *pVTab, sqlite3_index_info* info) {
   */
   if (nc == -1) {
     char *error = sqlite3_mprintf("%d constraints", nc);
-    pvTab->zErrMsg = error;
+    pVTab->zErrMsg = error;
     return SQLITE_ERROR;
   }
 
