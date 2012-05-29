@@ -13,10 +13,11 @@ function init() {
 
 //Store port to a new application page
 function onContentScriptConnect(port) {
+  port.id = globalCounter++;
   console.log("New Content script: " + port.name);
-  contentScripts[port.name] = new ContentScriptConnection(port);
-  port.onMessage.addListener(contentScripts[port.name].onMessageFromApp.bind(contentScripts[port.name]));
-  port.onDisconnect.addListener(contentScripts[port.name].onDisconnect.bind(contentScripts[port.name]));
+  contentScripts[port.id] = new ContentScriptConnection(port);
+  port.onMessage.addListener(contentScripts[port.id].onMessageFromApp.bind(contentScripts[port.id]));
+  port.onDisconnect.addListener(contentScripts[port.id].onDisconnect.bind(contentScripts[port.id]));
 }
 
 //Updates background page status field if NaCl module loads
@@ -33,7 +34,9 @@ function handleMessage(message_event) {
   console.log("from nacl: "+message_event.data);
   if (message_event.data.substr(0,5) != "Error") {
     var result = JSON.parse(message_event.data);
-    contentScripts[result.request.portname].onMessageFromNacl(result);
+    if (contentScripts[result.request.portname]) {
+      contentScripts[result.request.portname].onMessageFromNacl(result);
+    }
   }
 }
 
@@ -45,7 +48,7 @@ function ContentScriptConnection(port) {
 
   this.onMessageFromApp = function(msg) {
     msg.id = globalCounter++;
-    msg.portname = port.name;
+    msg.portname = port.id;
     console.log("MSG:"+port.name+"::"+JSON.stringify(msg));
     //This is the only operation not forwarded to NaCl and just done in JS
     if (msg.command == COMMANDS.getpublicip) {
