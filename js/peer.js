@@ -4,6 +4,7 @@ var server = {
   subscribers: [],
   waiters: {},
   providers: {},
+  serverDataRecv: 0,
 
   write: function(obj) {
     if (!this.socket || this.socket.readyState != 1) {
@@ -44,6 +45,7 @@ var server = {
   retrieve: function(req, result) {
     server.peers_for_hash(req, function(peers) {
       if (!peers.length) {
+        server.serverDataRecv++; 
         result(null);
       } 
       else {
@@ -55,6 +57,7 @@ var server = {
           server.data_from_peer(p, req, result);
         } else {
           //todo: allow on demand connection establishment.
+          server.serverDataRecv++; 
           result(null);
         }
       }
@@ -93,6 +96,7 @@ var server = {
 var node = {
   edges:{},
   MAX_EDGES: 20,
+  peerDataRecv: 0,
   onServerMessage: function(msg) {
     if (msg['from'] === 0)
     {
@@ -204,6 +208,12 @@ var node = {
       }
     } 
     else if (mo['event'] == 'resp') {
+      if (mo['status'] === false) {
+        server.serverDataRecv++;
+      }
+      else {
+        node.peerDataRecv++;
+      }
       var waiters = server.waiters[mo['id']];
       if (waiters) {
         delete server.waiters[mo['id']];
