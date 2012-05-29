@@ -115,14 +115,14 @@ static int js_xBestIndex(sqlite3_vtab *pVTab, sqlite3_index_info* info) {
 
   // are there rowid constraints?
   int nc = info->nConstraint;
-  sqlite3_index_constraint *constraints = info->aConstraint;
+  struct sqlite3_index_constraint *constraints = info->aConstraint;
   //int i;
 
   if (nc == 1) {
-    sqlite3_index_constraint *c = constraints[0];
-    int col = c->iColumn;
-    unsigned char op = c->op;
-    unsigned char usable = c->usable;
+    struct sqlite3_index_constraint c = constraints[0];
+    int col = c.iColumn;
+    unsigned char op = c.op;
+    unsigned char usable = c.usable;
   }
 
   //char* msg = sqlite3_malloc(256);
