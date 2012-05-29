@@ -28,7 +28,7 @@ var database = {
       var query_base_offset = database._getPageOffset(query);
       var query_page_offset = query_base_offset;
       if (page && !isNaN(page)) {
-        query_page_offset += page * database.page_width;
+        query_page_offset += (page-1) * database.page_width;
       }
       var query_base = database._rebaseQuery(query, 0);
       var query_real = database._rebaseQuery(query, query_page_offset);
