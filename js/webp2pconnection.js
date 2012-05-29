@@ -24,6 +24,7 @@ var WebP2PCommands = {
 
 var WebP2PConnectionSettings = {
   DEFAULT_PORT: 9229,
+  channel: null
 };
 
 window._WebP2PServer = null;
@@ -270,7 +271,9 @@ WebP2PConnection.prototype._sendCommand = function(msg, cb) {
   msg.cbid = this._cbid++;
   msg.peer = this.sid;
   this._cbr[msg.cbid] = cb;
-  window.postMessage({to: "extension", msg: msg}, window.location.origin);
+  if (WebP2PConnectionSettings.channel) {
+    WebP2PConnectionSettings.channel.contentWindow.postMessage({to: "extension", msg: msg}, "*");
+  }
 };
 
 WebP2PConnection.prototype._receiveCommand = function(event) {

@@ -2,23 +2,24 @@ var DEFAULT_PORT = 9229;
 var WebP2PCallbacks = {};
 var WebP2PCallbackIndex = 0;
 console.log("WebP2P Init()");
-window.addEventListener("message", webp2pReceiveMessage, false);
-
 function webp2pReceiveMessage(event){
   if ((typeof event.data.to !== 'undefined') && (event.data.to == "page")) {
     WebP2PCallbacks[event.data.msg.request.cbid](event.data.msg);
     delete WebP2PCallbacks[event.data.msg.request.cbid];
   }
 }
-
-function sendCommand(msg, callback){
-  msg.cbid = WebP2PCallbackIndex;
-  window.postMessage({to: "extension", msg: msg}, window.location.origin);
-  WebP2PCallbacks[WebP2PCallbackIndex] = callback;
-  WebP2PCallbackIndex++;
-}
+window.addEventListener("message", webp2pReceiveMessage, false);
 
 function WebP2PWrapper() {
+  var channel = document.getElementsByTagName('iframe')[0];
+
+  function sendCommand(msg, callback){
+    msg.cbid = WebP2PCallbackIndex;
+    channel.contentWindow.postMessage({to: "extension", msg: msg}, "*");
+    WebP2PCallbacks[WebP2PCallbackIndex] = callback;
+    WebP2PCallbackIndex++;
+  }  
+
   this.createSocket = function(callback) {
     sendCommand({command: COMMANDS.createsocket}, callback);
   }

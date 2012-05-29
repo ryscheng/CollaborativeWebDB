@@ -7,7 +7,6 @@ function init() {
   console.log("WebP2P NaCl Transport init()");
   var listener = document.getElementById('nacl_listener');
   chrome.extension.onConnect.addListener(onContentScriptConnect);
-  chrome.extension.onRequest.addListener(onLoadRequest);
   listener.addEventListener('load', moduleDidLoad, true);
   listener.addEventListener('message', handleMessage, true);
 }
@@ -18,13 +17,6 @@ function onContentScriptConnect(port) {
   contentScripts[port.name] = new ContentScriptConnection(port);
   port.onMessage.addListener(contentScripts[port.name].onMessageFromApp.bind(contentScripts[port.name]));
   port.onDisconnect.addListener(contentScripts[port.name].onDisconnect.bind(contentScripts[port.name]));
-}
-
-//Called to inject content script into an application
-function onLoadRequest(req, sender, resp) {
-  if (req.to != 'bg') return;
-  var origin = sender.tab.url;
-  chrome.tabs.executeScript(sender.tab.tabId, {file: "js/contentscript.js"});
 }
 
 //Updates background page status field if NaCl module loads

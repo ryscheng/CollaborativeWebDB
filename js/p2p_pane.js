@@ -46,12 +46,13 @@ var p2p_pane = {
               localStorage.removeItem(p2p_pane._lsid);
             });
             window.addEventListener('message', p2p_pane.msgTracker, false);
+            WebP2PConnectionSettings.channel = req_fr;
 
-            // Let the extension respond, then restart the server.
+            // Let the server find the extension.
             window.setTimeout(function() {
               window._WebP2PServer.state = 0;
               window._WebP2PServer.connect();
-            }, 10);
+            }, 0);
         }, false);
     },
     msgTracker: function(evt) {
