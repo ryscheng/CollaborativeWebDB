@@ -92,6 +92,7 @@ var network_pane = {
         return;
       }
       this.links.push({"source":idx, "target":0});
+      this.restore();
     },
     drop_node: function(id) {
       var idx = this.get_node_idx(id);
