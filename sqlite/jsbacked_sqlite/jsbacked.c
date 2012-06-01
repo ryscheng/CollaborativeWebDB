@@ -12,6 +12,7 @@ static void* js_answer = 0;
 static jmp_buf buf;
 static sqlite3_module js_module;
 static int js_returns = 0;
+static int NO_SUCH_ROWID = -100;
 
 typedef struct js_vtab_cursor {
   sqlite3_vtab_cursor base;
@@ -221,7 +222,7 @@ static int js_xNext(sqlite3_vtab_cursor *pCursor) {
 
     
     // Launchpad to Javascript.  js_backing must call js_done to yield control.
-    if ((c->rowid > c->rowid_last) && c->rowid_last != -1) {
+    if ((c->rowid > c->rowid_last) && c->rowid_last != NO_SUCH_ROWID) {
       c->row = 0;
       int hitlast = 1;
     }
@@ -245,7 +246,7 @@ static int js_xFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char *idxS
   js_vtab_cursor *c = (js_vtab_cursor*) pCursor;
   js_vtab* tab = cursor_tab(c);
   c->rowid = 0;
-  c->rowid_last = -1;
+  c->rowid_last = NO_SUCH_ROWID;
 
   // store the int value of the first two argv's in v0 and v1
   int v0, v1;
@@ -257,7 +258,7 @@ static int js_xFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char *idxS
     if (sqlite3_value_type(argv[1]) == SQLITE_INTEGER) {
       v1 = sqlite3_value_int(argv[1]);
     }
-    if (v0 == -1 || v1 == -1) {
+    if (v0 == NO_SUCH_ROWID || v1 == NO_SUCH_ROWID) {
        int twoargoneneg = 1;
        return js_xNext(pCursor);
     }
@@ -266,7 +267,7 @@ static int js_xFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char *idxS
     if (sqlite3_value_type(argv[0]) == SQLITE_INTEGER) {
       v0 = sqlite3_value_int(argv[0]);
     }
-    if (v0 == -1) {
+    if (v0 == NO_SUCH_ROWID) {
        return js_xNext(pCursor);
     }
   }
