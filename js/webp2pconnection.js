@@ -23,7 +23,7 @@ var WebP2PCommands = {
 };
 
 var WebP2PConnectionSettings = {
-  DEFAULT_PORT: 9229,
+  DEFAULT_PORT: 10000 + Math.floor(Math.random()*30000),
   channel: null
 };
 
@@ -35,6 +35,7 @@ var WebP2PConnection = function(id) {
 
   this._cbid = 0;
   this._cbr = {};
+  this.rtt = 1000; // default to 1 second latency.
   window.addEventListener("message", this._receiveCommand.bind(this), false);
   if (this.state == WebP2PConnectionState.CONNECTED) {
     this._receive();
@@ -176,12 +177,17 @@ WebP2PConnection.prototype.send = function(msg) {
   } else if (length == 0) {
     llength = "";
   }
-  this._write(llength + "" + length + "" + msg, function(msg) {});
+  this._write(llength + "" + length + "" + msg, function(msg) {
+    if (msg.result && msg.result < 0) {
+      this.onError && this.onError(msg);
+    }
+  }.bind(this));
   return true;
 };
 
 WebP2PConnection.prototype.onMessage = null;
 WebP2PConnection.prototype.onStateChange = null;
+WebP2PConnection.prototype.onError = null;
 
 
 WebP2PConnection.prototype._receive = function() {

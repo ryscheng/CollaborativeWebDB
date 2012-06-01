@@ -88,9 +88,19 @@ var server = {
       sever.waiters[datakey].push(result);
     } else {
       server.waiters[datakey] = [result];
-      peer.send(JSON.stringify({"event":"get","id":datakey,"key":key}));
+      peer.send(JSON.stringify({"event":"get","id":datakey,"key":key,"time":(new Date()).valueOf()}));
+      window.setTimeout(server.respond.bind(datakey, null), 2 * peer.rtt);
     }
   },
+  respond: function(key, val) {
+    var waiters = server.waiters[key];
+    if (waiters) {
+      delete server.waiters[key];
+      for (var i = 0; i < waiters.length; i++) {
+        server.waiters[key](val);
+      }
+    }
+  }
 };
 
 var node = {
@@ -167,12 +177,14 @@ var node = {
           node.edges[msg].close();
           node.edges[msg] = connection;
           connection.onMessage = node.onPeerMessage.bind(node, msg);
+          connection.onError = node.onPeerError.bind(node, msg);
           connection.onStateChange = node.onPeerStateChange.bind(node, msg);
         }
       } else {
         network_pane.channel_node(msg);
         node.edges[msg] = connection;
         connection.onMessage = node.onPeerMessage.bind(node, msg);
+        connection.onError = node.onPeerError.bind(node, msg);
         connection.onStateChange = node.onPeerStateChange.bind(node, msg);        
       }
     };
@@ -183,6 +195,11 @@ var node = {
       delete this.edges[peer];
       pc.onMessage = null;
       pc.onStateChange = null;
+    }
+  },
+  onPeerError: function(peer, error) {
+    if (server.waiters[error.request.id]) {
+      node.onPeerMessage(peer, {'event':'resp', 'status':false, 'id':error.request.id});
     }
   },
   onPeerMessage: function(peer, message) {
@@ -199,7 +216,7 @@ var node = {
       if (key) {
         database.getProvidedData(mo['key'], function(data) {
           log.write('Sending cached data key ' + mo['key'] + ' to ' + peer);
-          node.edges[peer].send(JSON.stringify({'event':'resp', 'id':mo['id'], 'status':true, 'data':data}));        
+          node.edges[peer].send(JSON.stringify({'event':'resp', 'rtime':mo['time'], 'id':mo['id'], 'status':true, 'data':data}));        
         });
       }
       else {
@@ -208,6 +225,10 @@ var node = {
       }
     } 
     else if (mo['event'] == 'resp') {
+      if (mo['rtime']) {
+        var delta = (new Date()).valueOf() - mo['rtime'];
+        this.edges[peer].rtt = (this.edges[peer].rtt * 3 + delta) / 4;
+      }
       if (mo['status'] === false) {
         server.serverDataRecv++;
       }
@@ -241,6 +262,7 @@ var node = {
       }
       this.edges[id] = pc;
       pc.onMessage = node.onPeerMessage.bind(node, id);
+      pc.onError = node.onPeerError.bind(node, id);
       pc.onStateChange = node.onPeerStateChange.bind(node, id);
     }
   },

@@ -15,8 +15,6 @@
     "load.html"
   ],
   "permissions": [
-    "experimental",
-    "tabs",
-    "<all_urls>"
+    "http://checkip.dyndns.com/"
   ]
 }
