@@ -221,14 +221,16 @@ static int js_xNext(sqlite3_vtab_cursor *pCursor) {
 
     
     // Launchpad to Javascript.  js_backing must call js_done to yield control.
-    if (c->rowid > c->rowid_last && c->rowid_last != -1) {
+    if ((c->rowid > c->rowid_last) && c->rowid_last != -1) {
       c->row = 0;
+      int hitlast = 1;
     }
     else {
       jsbacked_call(tab->name, c->rowid++);
       c->row = (void**)js_answer;
     }
     if (c->row == 0) {
+      int rowIs0 = 1;
       c->eof = 1;
     } else {
       c->eof = 0;
@@ -270,18 +272,19 @@ static int js_xFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char *idxS
   
   // for == or >, start iterating at the operand, set rowid_last to operand also
   // if it's ==, otherwise leave it as -1 (none)
-  if (idxNum == ROWID_EQUAL || idxNum == ROWID_GREATER_THAN && argc == 1) {
+  if (idxNum == ROWID_EQUAL && argc == 1) {
+    c->rowid = v0;
+    c->rowid_last = c->rowid;
+  }
+  if (idxNum == ROWID_GREATER_THAN && argc == 1) {
     c->rowid = v0+1;
-    if (idxNum == ROWID_EQUAL) {
-      c->rowid_last = c->rowid;
-    }
   }
   else if (idxNum == ROWID_LESS_THAN && argc == 1) {
     c->rowid_last = v0-1;
   }
   else if (idxNum == ROWID_RANGE && argc == 2) {
-    c->rowid = v0+1;
-    c->rowid_last = v1-1;
+    c->rowid = v1+1;
+    c->rowid_last = v0-1;
   }
   return js_xNext(pCursor);
 };
