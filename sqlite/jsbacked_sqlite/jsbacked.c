@@ -283,6 +283,9 @@ static int js_xFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char *idxS
     c->rowid_last = v0-1;
   }
   else if (idxNum == ROWID_RANGE && argc == 2) {
+    int ranging;
+    int from = v1+1;
+    int to = v0-1;
     c->rowid = v1+1;
     c->rowid_last = v0-1;
   }
