@@ -79,6 +79,7 @@ var network_pane = {
       return -1;
     },
     saw_node: function(id) {
+      console.debug('saw node', id);
       if (this.get_node_idx(id) > -1) {
         return;
       }

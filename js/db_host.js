@@ -45,7 +45,7 @@ var database = {
       }
       var data = JSON.parse(event.data);
       if (data && data['m']) {
-        //console.log('message from db:' + event.data);
+        console.log('message from db:' + event.data);
         if (data['m'] == 'exec') {
           if (data['r']['ret'] !== undefined) {
             var id = data['r']['id'];

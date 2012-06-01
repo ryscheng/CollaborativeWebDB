@@ -18,6 +18,7 @@ typedef struct js_vtab_cursor {
   sqlite_int64 rowid;
   int eof;
   void** row;
+  sqlite_int64 rowid_last;
 } js_vtab_cursor;
 
 typedef struct js_vtab {
@@ -26,6 +27,13 @@ typedef struct js_vtab {
   char *name;
 } js_vtab;
 
+enum rowid_constraint {
+  ROWID_NONE,
+  ROWID_EQUAL,
+  ROWID_RANGE,
+  ROWID_GREATER_THAN,
+  ROWID_LESS_THAN
+};
 
 enum js_datatype {
   BLOB,
@@ -118,19 +126,55 @@ static int js_xBestIndex(sqlite3_vtab *pVTab, sqlite3_index_info* info) {
   struct sqlite3_index_constraint *constraints = info->aConstraint;
   //int i;
 
+  info->idxNum = ROWID_NONE;
+
+  // check to see if the single constraint is ==/>/< on rowid
   if (nc == 1) {
     struct sqlite3_index_constraint c = constraints[0];
     int col = c.iColumn;
     unsigned char op = c.op;
     unsigned char usable = c.usable;
-  }
 
-  //char* msg = sqlite3_malloc(256);
-  /*
-  for (i=0; i<nc; i++) {
-    sqlite3_index_constraint c = constraints[i];
+    if (op == SQLITE_INDEX_CONSTRAINT_EQ && col == -1) {
+      info->aConstraintUsage[0].argvIndex = 1;
+      info->aConstraintUsage[0].omit = 1; 
+
+      info->idxNum = ROWID_EQUAL;
+    }
+    else if (op == SQLITE_INDEX_CONSTRAINT_GT && col == -1) {
+      info->aConstraintUsage[0].argvIndex = 1;
+      info->aConstraintUsage[0].omit = 1;
+
+      info->idxNum = ROWID_GREATER_THAN;
+    }
+    else if (op == SQLITE_INDEX_CONSTRAINT_LT && col == -1) {
+      info->aConstraintUsage[0].argvIndex = 1;
+      info->aConstraintUsage[0].omit = 1;
+
+      info->idxNum = ROWID_LESS_THAN;
+    }
   }
-  */
+  // check to see if two constraints are a range on the rowid
+  else if (nc == 2) {
+    struct sqlite3_index_constraint c0 = constraints[0];
+    struct sqlite3_index_constraint c1 = constraints[1];
+
+    // set the LT constraint to come first
+    if (c0.op == SQLITE_INDEX_CONSTRAINT_LT && c1.op == SQLITE_INDEX_CONSTRAINT_GT) {
+      info->aConstraintUsage[0].argvIndex = 1;
+      info->aConstraintUsage[0].omit = 1; 
+      info->aConstraintUsage[1].argvIndex = 2;
+      info->aConstraintUsage[1].omit = 2; 
+      info->idxNum = ROWID_RANGE;
+    }
+    else if (c1.op == SQLITE_INDEX_CONSTRAINT_LT && c0.op == SQLITE_INDEX_CONSTRAINT_GT) {
+      info->aConstraintUsage[1].argvIndex = 1;
+      info->aConstraintUsage[1].omit = 1; 
+      info->aConstraintUsage[0].argvIndex = 2;
+      info->aConstraintUsage[0].omit = 2; 
+      info->idxNum = ROWID_RANGE;
+    }
+  }
 
   js_vtab* tab = (js_vtab*) pVTab;
   pVTab->zErrMsg = 0;
@@ -175,9 +219,15 @@ static int js_xNext(sqlite3_vtab_cursor *pCursor) {
       free(c->row);
     }
 
+    
     // Launchpad to Javascript.  js_backing must call js_done to yield control.
-    jsbacked_call(tab->name, c->rowid++);
-    c->row = (void**)js_answer;
+    if (c->rowid > c->rowid_last && c->rowid_last != -1) {
+      c->row = 0;
+    }
+    else {
+      jsbacked_call(tab->name, c->rowid++);
+      c->row = (void**)js_answer;
+    }
     if (c->row == 0) {
       c->eof = 1;
     } else {
@@ -187,12 +237,53 @@ static int js_xNext(sqlite3_vtab_cursor *pCursor) {
 };
 
 // Filter a cursor.
-static int js_xFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char *idxStr, int argc, sqlite3_value **argv) {
-    js_vtab_cursor *c = (js_vtab_cursor*) pCursor;
-    js_vtab* tab = cursor_tab(c);
-    c->rowid = 0;
+static int js_xFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char *idxStr, int argc, sqlite3_value **argv) { 
 
-    return js_xNext(pCursor);
+  // this is what was previously done
+  js_vtab_cursor *c = (js_vtab_cursor*) pCursor;
+  js_vtab* tab = cursor_tab(c);
+  c->rowid = 0;
+  c->rowid_last = -1;
+
+  // store the int value of the first two argv's in v0 and v1
+  int v0, v1;
+  v0 = v1 = -1;
+  if (argc == 2) {
+    if (sqlite3_value_type(argv[0]) == SQLITE_INTEGER) {
+      v0 = sqlite3_value_int(argv[0]);
+    }
+    if (sqlite3_value_type(argv[1]) == SQLITE_INTEGER) {
+      v1 = sqlite3_value_int(argv[1]);
+    }
+    if (v0 == -1 || v1 == -1) {
+       return js_xNext(pCursor);
+    }
+  }
+  else if (argc == 1) {
+    if (sqlite3_value_type(argv[0]) == SQLITE_INTEGER) {
+      v0 = sqlite3_value_int(argv[0]);
+    }
+    if (v0 == -1) {
+       return js_xNext(pCursor);
+    }
+  }
+  
+  // for == or >, start iterating at the operand, set rowid_last to operand also
+  // if it's ==, otherwise leave it as -1 (none)
+  if (idxNum == ROWID_EQUAL || idxNum == ROWID_GREATER_THAN && argc == 1) {
+    c->rowid = v0+1;
+    if (idxNum == ROWID_EQUAL) {
+      c->rowid_last = c->rowid;
+    }
+  }
+  else if (idxNum == ROWID_LESS_THAN && argc == 1) {
+    c->rowid_last = v0-1;
+  }
+  else if (idxNum == ROWID_RANGE && argc == 2) {
+    c->rowid = v0+1;
+    c->rowid_last = v1-1;
+  }
+  return js_xNext(pCursor);
 };
 
 // End of cursor check.
