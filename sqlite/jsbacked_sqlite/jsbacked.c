@@ -258,6 +258,7 @@ static int js_xFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char *idxS
       v1 = sqlite3_value_int(argv[1]);
     }
     if (v0 == -1 || v1 == -1) {
+       int twoargoneneg = 1;
        return js_xNext(pCursor);
     }
   }
