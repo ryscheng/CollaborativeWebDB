@@ -22,6 +22,7 @@ var database = {
 
     if (query.match(/^SELECT/i)) {
       // paging
+      
       if (query.indexOf(";") == -1) {
         query = query + ";";
       }
@@ -30,9 +31,10 @@ var database = {
       if (page && !isNaN(page)) {
         query_page_offset += (page-1) * database.page_width;
       }
-      var query_base = database._rebaseQuery(query, 0);
-      var query_real = database._rebaseQuery(query, query_page_offset);
+      var query_base = database._rebaseQueryRowid(query, 0);
+      var query_real = database._rebaseQueryRowid(query, query_page_offset);
       Host.log("cost query is " + query_base);
+      Host.log("real query is " + query_real);
       database._reset();
       database._training = true;
       try {
@@ -54,15 +56,27 @@ var database = {
   },
   _getPageOffset: function(query) {
       var qLimit = query.match(/LIMIT\s*(\d+),?\s*(\d+)?/i);
-      
+      var qRowid = query.match(
+          /rowid\s*([=><])\s*(\d+)(\s+AND\s+rowid\s*([=><])\s*(\d+))?/i);
+
       // find offset into results from which we will return
       var offset = 0;
-      if (qLimit && qLimit[2]) {
+      if (qRowid) {
+        if      (qRowid[1] == '>') { offset = parseInt(qRowid[2])+1; }
+        else if (qRowid[1] == '=') { offset = parseInt(qRowid[2]);   } 
+        else if (qRowid[4] == '>') { offset = parseInt(qRowid[5])+1; }
+        else if (qRowid[4] == '=') { offset = parseInt(qRowid[5]);   }
+      }
+      else if (qLimit && qLimit[2]) {
         offset = parseInt(qLimit[1]);
       }
-      return offset;  
+      else {
+
+      }
+      return offset;
   },
-  _rebaseQuery: function(query, offset) {
+
+  _rebaseQueryLimit: function(query, offset) {
       var qLimit = query.match(/LIMIT\s*(\d+),?\s*(\d+)?/i);
 
       var limit = ' LIMIT ' + offset + ', ' + database.page_width + ';';
@@ -75,6 +89,21 @@ var database = {
       }
       return query;
   },
+  _rebaseQueryRowid: function(query, offset) {
+    var qWhere = query.match(/WHERE/i);
+    if (qWhere && query.match(/rowid/)) {
+      return query;
+    }
+    else if (qWhere) {
+      return this._rebaseQueryLimit(query, offset);
+    }
+    else {  //assume query pretty simple...
+      var whereClause = " WHERE rowid > "+(offset-1)+" AND rowid < "+(offset+30)+";"; 
+      query = query.replace(/;/, whereClause); 
+    }
+    return query;
+  },
+
   _cost: function(query, callback, only_train, query_offset, answer) {
     if (only_train) {
         database._reset();
@@ -124,7 +153,7 @@ var database = {
         }
       }
       continuation();
-    } else { // Directly load results.
+    } else { // Directly load results (from the server)
       var key = database.get_complex_page_key(query);
       database.load_page(key, function() {
         var result = database._get(key);
