@@ -18,6 +18,7 @@ Run
 In order to get it running,
   Install unpacked extension in Google Chrome
   Note the <extensionid>
+  Modify test.html to include the right page in the iframe with the <extensionid>
   Close Google Chrome
   Reopen Google Chrome with the right flags
     --enable-nacl 
@@ -25,6 +26,7 @@ In order to get it running,
     --enable-media-stream 
     --enable-experimental-extension-apis 
     For hints, look at openchrome.sh
+  Open the right ports on your firewall (default=9229)
   Run the python script
     python httpd.py
   Open http://localhost:5103
