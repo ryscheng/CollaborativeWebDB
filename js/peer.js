@@ -97,7 +97,7 @@ var server = {
     if (waiters) {
       delete server.waiters[key];
       for (var i = 0; i < waiters.length; i++) {
-        waiters[i](val);
+        server.waiters[key](val);
       }
     }
   }
@@ -240,7 +240,13 @@ var node = {
       else {
         node.peerDataRecv++;
       }
-      server.respond(mo['id'], mo['status'] ? mo['data']: null);
+      var waiters = server.waiters[mo['id']];
+      if (waiters) {
+        delete server.waiters[mo['id']];
+        for (var i = 0; i < waiters.length; i++) {
+          waiters[i](mo['status'] ? mo['data']: null);
+        }
+      }
     }
   },
   maybeConnect_:function(id, info) {
