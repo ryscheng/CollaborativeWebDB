@@ -89,7 +89,7 @@ var server = {
     } else {
       server.waiters[datakey] = [result];
       peer.send(JSON.stringify({"event":"get","id":datakey,"key":key,"time":(new Date()).valueOf()}));
-      window.setTimeout(server.respond.bind(datakey, null), 2 * peer.rtt);
+      window.setTimeout(server.respond.bind(server, datakey, null), 2 * peer.rtt);
     }
   },
   respond: function(key, val) {
