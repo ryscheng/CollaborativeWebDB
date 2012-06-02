@@ -198,8 +198,13 @@ var node = {
     }
   },
   onPeerError: function(peer, error) {
-    if (server.waiters[error.request.id]) {
-      node.onPeerMessage(peer, {'event':'resp', 'status':false, 'id':error.request.id});
+    if (error.request && error.request.comand == 3) {
+      var data = error.request.data;
+      var n1 = data[0];
+      var realdata = data.substr(1 + parseInt(n1));
+      if (server.waiters[realdata.id]) {
+        node.onPeerMessage(peer, {'event':'resp', 'status':false, 'id':realdata.id});
+      }
     }
   },
   onPeerMessage: function(peer, message) {
