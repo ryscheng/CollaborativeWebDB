@@ -58,3 +58,5 @@ Sqlite was first compiled to javascript here https://github.com/kripken/sql.js
 this project adds the additional code in the sqlite directory, which provides
 a `jsbacking` sqlite module, which creates sqlite virtual tables backed by data
 from javascript objects.
+
+https://hacks.mozilla.org/2012/02/saving-images-and-files-in-localstorage/
