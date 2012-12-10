@@ -42,9 +42,7 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r"/", MainHandler),
-            (r"/data.html", SubHandler),
             (r"/message", MessageHandler),
-            (r"/data", DataHandler),
         ]
         if options.witheval:
           handlers.append((r"/evaluation", EvaluationHandler))
@@ -58,6 +56,10 @@ class Application(tornado.web.Application):
             autoescape=None,
         )
         tornado.web.Application.__init__(self, handlers, **settings)
+
+class MainHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render("instacdn.html", evaluation=False)
 
 class EvaluationHandler(tornado.web.RequestHandler):
     def get(self):
@@ -91,72 +93,6 @@ class EvaluationHandler(tornado.web.RequestHandler):
         "time": 0,
       }
 
-
-
-class MainHandler(tornado.web.RequestHandler):
-    def get(self):
-        self.render("instacdn.html", evaluation=False)
-
-class SubHandler(tornado.web.RequestHandler):
-    def get(self):
-        self.render("data.html")
-
-class DataHandler(tornado.web.RequestHandler):
-    pagesize = 30
-    stats = None
-
-    def initialize(self):
-        if os.access(options.data, os.W_OK):
-            logging.error("Database is mutable, chmod -w to fix.")
-        if os.path.exists(options.data):
-            self.db = sqlite3.connect(options.data)
-        else:
-            self.db = None
-
-    def get(self):
-        # evaluation!
-        timeBin = None
-        stats = DataHandler.stats
-        if EvalWSHandler.started:
-          stats["count"] += 1
-          startTime = time.time()
-          timeBin = math.floor(startTime)
-          logging.info("timebin is %d" %(timeBin))
-          if (timeBin in stats["counts"]):
-            stats["counts"][timeBin] += 1
-          else:
-            stats["counts"][timeBin] = 1
-
-        # actual data handling
-        q = urllib.unquote(self.get_argument('q'))
-        logging.info(q)
-        retval = {}
-        if self.db:
-            c = self.db.cursor()
-            try:
-                c.execute(q)
-                retval['rows'] = c.fetchmany(DataHandler.pagesize)
-                cols = [col[0] for idx,col in enumerate(c.description)]
-                retval['cols'] = cols
-            except Exception as e:
-                retval['status'] = e.__str__()
-        else:
-            retval['status'] = 'No Data Available'
-
-        self.write(retval)
-
-        # evaluation!
-        if EvalWSHandler.started:
-          endTime = time.time()
-          elapsed = endTime-startTime
-          stats["time"] += elapsed
-          if (timeBin in stats["times"]):
-            stats["times"][timeBin] += elapsed
-          else:
-            stats["times"][timeBin] = elapsed
-
-          logging.info("done with a get, count: %d, time: %f, bincount: %d, bintime: %f" % (stats["count"], stats["time"], stats["counts"][timeBin], stats["times"][timeBin]))
-                
 class EvalWSHandler(tornado.websocket.WebSocketHandler):
   evaluators = dict();
   evaluatorStats = dict();
@@ -250,7 +186,6 @@ class EvalWSHandler(tornado.websocket.WebSocketHandler):
 class MessageHandler(tornado.websocket.WebSocketHandler):
     waiters = dict()
     hashes = dict()
-
     
     def allow_draft76(self):
         # for iOS 5.0 Safari
@@ -266,7 +201,6 @@ class MessageHandler(tornado.websocket.WebSocketHandler):
           MessageHandler.send_updates({"from": 0, "id": self.id, "event": "disconnect"});
           for key in self.hashes:
             MessageHandler.hashes[key].remove(self.id)
-
 
     @classmethod
     def send_updates(cls, chat):

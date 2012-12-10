@@ -1,20 +1,18 @@
 var instacdn_cache = {};
 
 window.addEventListener('load', function() {
-  console.log("Connecting to server.");
-  /**
+  console.log("Connecting to tracker");
   server.start();
   server.socket.onopen = function() {
-    log.write("Connected to server.");
+    console.log("Connected to tracker");
     server.write({
       event:'register'
     });
   }
   server.subscribers.push(function(msg) {
-    log.write("Server Message received: " + JSON.stringify(msg));
+    console.log("Tracker message received: " + JSON.stringify(msg));
   });
   server.subscribers.push(node.onServerMessage.bind(node));
-  **/
 }, false);
 
 function http_get(url) {

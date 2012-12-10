@@ -22,6 +22,10 @@
           document.write("<link href='" + url + "' rel='stylesheet'>");
         }
         var scripts = [
+            //WebP2P NaCl for WebRTC-like interface
+            '{{ static_url("plugins/chrome/js/common.js") }}',
+            '{{ static_url("plugins/chrome/js/webp2p.js") }}',
+            //InstaCDN
             '{{ static_url("js/instacdn_connection.js") }}',
             '{{ static_url("js/instacdn_peer.js") }}',
             '{{ static_url("js/instacdn.js") }}'
@@ -46,4 +50,6 @@
     </section>
   </div>
   </body>
+  <!-- WebP2P WebRTC-like interface -->
+  <iframe src='chrome-extension://fnlnimhaddmjdohohcjhjgabfonnkckg/load.html#localhost:8080'></iframe>
 </html>

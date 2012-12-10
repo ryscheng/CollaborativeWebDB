@@ -26,8 +26,6 @@ var server = {
           that.subscribers[i](msg);
         }
     }
-    database.listeners['get_hash'] = server.retrieve;
-    database.listeners['announce_hash'] = server.announce_hash;
 
     // Create a server socket.
 	new WebP2PConnection().getId();
@@ -36,7 +34,7 @@ var server = {
   },
  
   announce_hash: function(hashQueryPair, dataHandler) {
-    log.write("Providing " + hashQueryPair);
+    console.log("Providing " + hashQueryPair);
     if (server.write({"event": "set","key": hashQueryPair["hash"]})) {
       server.providers[hashQueryPair["hash"]] = true;
     }                      
@@ -66,7 +64,7 @@ var server = {
   
   peers_for_hash: function(req, result) {
     var key = req.hash;
-    log.write("Looking up " + key);
+    console.log("Looking up " + key);
     if (server.waiters[key + ".cache"]) {
       return result(server.waiters[key + ".cache"]);
     }
@@ -82,7 +80,7 @@ var server = {
   },
   data_from_peer: function(peer, req, result) {
     var key = req.hash;
-    log.write("Getting data for " + key);
+    console.log("Getting data for " + key);
     var datakey = peer.sid + "_" + key;
     if(server.waiters[datakey]) {
       sever.waiters[datakey].push(result);
@@ -113,14 +111,13 @@ var node = {
       if (msg['id'] && !this.id && msg['event'] == "register") {
         // Registration complete.
         this.id = msg['id'];
-        log.write("Registered with server as " + this.id);
+        console.log("Registered with server as " + this.id);
         // todo: consider announces on a timer or when deficient degree.
         server.write({
           event:'announce'
         });
       } else if (msg['event'] == 'disconnect') {
         delete this.edges[msg['id']];
-        network_pane.drop_node(msg['id']);
       } else if (msg['event'] == 'list') {
         var key = msg['key'];
         var result = msg['ids'];
@@ -171,9 +168,6 @@ var node = {
         if (node.edges[msg].state == WebP2PConnectionState.CONNECTED && msg < node.id) {
           connection.close();
         } else {
-          if (node.edges[msg].state != WebP2PConnectionState.CONNECTED) {
-            network_pane.channel_node(msg);
-          }
           node.edges[msg].close();
           node.edges[msg] = connection;
           connection.onMessage = node.onPeerMessage.bind(node, msg);
@@ -181,7 +175,6 @@ var node = {
           connection.onStateChange = node.onPeerStateChange.bind(node, msg);
         }
       } else {
-        network_pane.channel_node(msg);
         node.edges[msg] = connection;
         connection.onMessage = node.onPeerMessage.bind(node, msg);
         connection.onError = node.onPeerError.bind(node, msg);
@@ -250,7 +243,6 @@ var node = {
     }
   },
   maybeConnect_:function(id, info) {
-    network_pane.saw_node(id);
     if (!this.full()) {
       var pc = new WebP2PConnection();
       if (info) {
@@ -258,7 +250,6 @@ var node = {
           if (pc.state != WebP2PConnectionState.CONNECTED) {
             server.write({"to":id, "msg": pc.getId()});
           } else {
-            network_pane.channel_node(id);
             pc.send(node.id);
           }
         });
