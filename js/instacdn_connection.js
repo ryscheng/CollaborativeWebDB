@@ -1,3 +1,5 @@
+var FLAG_DEBUG_LOCALHOST = true;
+
 var WebP2PConnectionState = {
   NEW: 0,
   CONNECTING: 1,
@@ -67,11 +69,16 @@ WebP2PConnection.prototype.connect = function(otherid, done) {
     window._WebP2PServer = new WebP2PConnection(null);
     window._WebP2PServer.connect();
   } else if (this == window._WebP2PServer) {
-    //console.log('starting listener');
+    console.log('starting listener');
     this._onListen = [];
     this._transition(WebP2PConnectionState.CONNECTING);
     this._getPublicIp(function(msg) {
-      this._addr = msg.result;
+      if (FLAG_DEBUG_LOCALHOST) {
+        this._addr = "localhost";
+      } else {
+        this._addr = msg.result;
+      }
+      console.log("Listening on "+this._addr+":"+WebP2PConnectionSettings.DEFAULT_PORT);
       this._createServerSocket(function(msg) {
         if (msg.result == 0) {
           this.sid = msg.ssocketId;
@@ -228,6 +235,7 @@ WebP2PConnection.prototype._receive = function() {
 
 WebP2PConnection.prototype._transition = function(state) {
   if (this.state != state) {
+    console.log("Transitioned to " + state);
     this.state = state;
     if (this.onStateChange) {
       this.onStateChange(state);
@@ -277,6 +285,9 @@ WebP2PConnection.prototype._sendCommand = function(msg, cb) {
   msg.cbid = this._cbid++;
   msg.peer = this.sid;
   this._cbr[msg.cbid] = cb;
+  if (!WebP2PConnectionSettings.channel) {
+    WebP2PConnectionSettings.channel = document.getElementsByTagName('iframe')[0];
+  }
   if (WebP2PConnectionSettings.channel) {
     WebP2PConnectionSettings.channel.contentWindow.postMessage({to: "extension", msg: msg}, "*");
   }

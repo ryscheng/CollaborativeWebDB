@@ -34,10 +34,10 @@ var server = {
   },
  
   announce_hash: function(hashQueryPair, dataHandler) {
-    console.log("Providing " + hashQueryPair);
+    console.log("Providing " + JSON.stringify(hashQueryPair));
     if (server.write({"event": "set","key": hashQueryPair["hash"]})) {
       server.providers[hashQueryPair["hash"]] = true;
-    }                      
+    }
   },
 
   retrieve: function(req, result) {
@@ -87,16 +87,16 @@ var server = {
     } else {
       server.waiters[datakey] = [result];
       peer.send(JSON.stringify({"event":"get","id":datakey,"key":key,"time":(new Date()).valueOf()}));
-      window.setTimeout(server.respond.bind(server, datakey, null), 2 * peer.rtt);
+      window.setTimeout(server.respond.bind(server, datakey, null), 3 * peer.rtt);
     }
   },
   respond: function(key, val) {
-    var waiters = server.waiters[key];
-    if (waiters) {
-      delete server.waiters[key];
-      for (var i = 0; i < waiters.length; i++) {
-        server.waiters[key](val);
+    console.log("Data fetching timed out");
+    if (key in server.waiters) {
+      for (var i = 0; i < server.waiters[key].length; i++) {
+        server.waiters[key][i](val);
       }
+      delete server.waiters[key];
     }
   }
 };
@@ -210,12 +210,14 @@ var node = {
     }
     if (!mo['event']) return;
     if (mo['event'] == 'get') {
-      var key = server.providers[mo['key']];
-      if (key) {
-        database.getProvidedData(mo['key'], function(data) {
-          log.write('Sending cached data key ' + mo['key'] + ' to ' + peer);
-          node.edges[peer].send(JSON.stringify({'event':'resp', 'rtime':mo['time'], 'id':mo['id'], 'status':true, 'data':data}));        
-        });
+      var key = mo['key'];
+      if (server.providers[key]) {
+        if (key in instacdn_cache) {
+          console.log('Sending cached data key ' + key + ' to ' + peer);
+          node.edges[peer].send(JSON.stringify({'event':'resp', 'rtime':mo['time'], 'id':mo['id'], 'status':true, 'data':instacdn_cache[key]}));        
+        } else {
+          console.log('Received get request for key not in cache: '+mo['key']);
+        }
       }
       else {
         log.write('Asked to provide unavailable data key ' + mo['key'] + ' for ' + peer);
