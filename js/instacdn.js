@@ -13,7 +13,20 @@ window.addEventListener('load', function() {
     console.log("Tracker message received: " + JSON.stringify(msg));
   });
   server.subscribers.push(node.onServerMessage.bind(node));
+  //Hack until on-demand connection establishment is done
+  window.setTimeout(rewrite_images, 1000);
 }, false);
+
+function rewrite_images() {
+  //Rewrite all img tags with instacdn_src attribute
+  var images = document.getElementsByTagName('img');
+  for (var i = 0; i < images.length; i++) {
+    var url = images[i].getAttribute("instacdn-src");
+    if (url != null) {
+      instacdn_fetch(images[i], url);
+    }
+  }
+}
 
 function http_get(url) {
   var req = new XMLHttpRequest();
@@ -31,11 +44,11 @@ function getMimeTypeFromUrl(url) {
   url = url.toLowerCase();
   var tokens = url.split('.');
   var ext = tokens[tokens.length-1];
-  if (ext == "png")
+  if (ext.substring(0,3) === "png")
     return "image/png";
-  else if (ext == "gif")
+  else if (ext.substring(0,3) === "gif")
     return "image/gif";
-  else if (ext == "jpg" || ext == "jpeg")
+  else if (ext.substring(0,3) === "jpg" || ext.substring(0,4) === "jpeg")
     return "image/jpeg";
   else
     return "text/plain";
@@ -45,11 +58,20 @@ function instacdn_fetch(img, url) {
   if (!img.rewritten) {
     if (!(url in instacdn_cache)) {
       console.log("Fetching " + url);
-      instacdn_cache[url] = http_get(url);
+      server.retrieve({hash:url}, function(data) {
+        console.log("got from peers: "+data);
+        if (data === null) {
+          instacdn_cache[url] = window.btoa(http_get(url));
+        } else {
+          instacdn_cache[url] = data;
+        }
+        server.announce_hash({'hash':url}, null);
+        img.src = "data:" + getMimeTypeFromUrl(url) + ";base64," + instacdn_cache[url];
+        img.rewritten = true;
+      });
+    } else {
+      img.src = "data:" + getMimeTypeFromUrl(url) + ";base64," + instacdn_cache[url];
+      img.rewritten = true;
     }
-    var newUrl = "data:" + getMimeTypeFromUrl(url) + ";base64,";
-    newUrl += window.btoa(instacdn_cache[url]);
-    img.src = newUrl;
-    img.rewritten = true;
   }
 }

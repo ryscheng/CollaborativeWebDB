@@ -14,7 +14,7 @@ function init() {
 //Store port to a new application page
 function onContentScriptConnect(port) {
   port.id = globalCounter++;
-  console.log("New Content script: " + port.name);
+  console.log("New Content script: " + port.id);
   contentScripts[port.id] = new ContentScriptConnection(port);
   port.onMessage.addListener(contentScripts[port.id].onMessageFromApp.bind(contentScripts[port.id]));
   port.onDisconnect.addListener(contentScripts[port.id].onDisconnect.bind(contentScripts[port.id]));
@@ -34,8 +34,8 @@ function handleMessage(message_event) {
   console.log("from nacl: "+message_event.data);
   if (message_event.data.substr(0,5) != "Error") {
     var result = JSON.parse(message_event.data);
-    if (contentScripts[result.request.portname]) {
-      contentScripts[result.request.portname].onMessageFromNacl(result);
+    if (contentScripts[result.request.portid]) {
+      contentScripts[result.request.portid].onMessageFromNacl(result);
     }
   }
 }
@@ -48,8 +48,8 @@ function ContentScriptConnection(port) {
 
   this.onMessageFromApp = function(msg) {
     msg.id = globalCounter++;
-    msg.portname = port.id;
-    console.log("MSG:"+port.name+"::"+JSON.stringify(msg));
+    msg.portid = port.id;
+    console.log("MSG:"+port.id+"::"+JSON.stringify(msg));
     //This is the only operation not forwarded to NaCl and just done in JS
     if (msg.command == COMMANDS.getpublicip) {
       function parseDomForIp(dom) {
@@ -141,7 +141,7 @@ function ContentScriptConnection(port) {
         naclmodule.postMessage(JSON.stringify({command: COMMANDS.destroyserversocket, ssocketId: this.listeners[i], id: Math.floor(Math.random()*MAX_INT)}));
       }
     }
-    delete contentScripts[this.port.name];
+    delete contentScripts[this.port.id];
   }
 }
 

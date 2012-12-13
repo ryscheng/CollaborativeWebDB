@@ -60,3 +60,9 @@ a `jsbacking` sqlite module, which creates sqlite virtual tables backed by data
 from javascript objects.
 
 https://hacks.mozilla.org/2012/02/saving-images-and-files-in-localstorage/
+
+TODO
+-----
+* On demand connection establishment (currently just connects to first N peers)
+* Allow for retrying across multiple content providers (also detect liars)
+* Load balancing across multiple providers
