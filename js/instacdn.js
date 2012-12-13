@@ -59,10 +59,11 @@ function instacdn_fetch(img, url) {
     if (!(url in instacdn_cache)) {
       console.log("Fetching " + url);
       server.retrieve({hash:url}, function(data) {
-        console.log("got from peers: "+data);
         if (data === null) {
+          console.log("Fetched from server");
           instacdn_cache[url] = window.btoa(http_get(url));
         } else {
+          console.log("Fetched from peers: "+data);
           instacdn_cache[url] = data;
         }
         server.announce_hash({'hash':url}, null);
